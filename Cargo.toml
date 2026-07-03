@@ -1,0 +1,9 @@
+[package]
+name = "No_Std_Font"
+version = "3.7.7"
+edition = "2024"
+
+[dependencies]
+
+[profile.release]
+opt-level = 3
