@@ -1,6 +1,6 @@
 [package]
 name = "microfont"
-version = "3.7.7"
+version = "3.7.8"
 edition = "2024"
 license = "MIT"
 description = "MicroFont is a tiny no_std 6x11 bitmap font stamper for flat pixel buffers."
