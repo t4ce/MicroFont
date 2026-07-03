@@ -1,5 +1,5 @@
 [package]
-name = "No_Std_Font"
+name = "MicroFont"
 version = "3.7.7"
 edition = "2024"
 
