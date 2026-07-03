@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "font"
-version = "0.1.0"
+name = "microfont"
+version = "3.7.7"

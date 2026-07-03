@@ -1,7 +1,21 @@
 [package]
-name = "MicroFont"
+name = "microfont"
 version = "3.7.7"
 edition = "2024"
+license = "MIT"
+description = "MicroFont is a tiny no_std 6x11 bitmap font stamper for flat pixel buffers."
+homepage = "https://github.com/t4ce/MicroFont"
+repository = "https://github.com/t4ce/MicroFont"
+readme = "README.md"
+keywords = ["font", "bitmap", "pixel", "no-std", "embedded"]
+categories = ["no-std", "embedded", "graphics", "rendering"]
+include = [
+    "Cargo.toml",
+    "README.md",
+    "LICENSE",
+    "src/**/*.rs",
+    "examples/**/*.rs",
+]
 
 [dependencies]
 

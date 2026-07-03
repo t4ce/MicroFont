@@ -3,7 +3,7 @@ use std::fs::{File, create_dir_all};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use font::{ERRBUFF,ERRINV,FHEIGHT,measure_text,stamp_text};
+use microfont::{ERRBUFF,ERRINV,FHEIGHT,measure_text,stamp_text};
 
 const ERR_FILE_CREATE: &str = "file create failed";
 const ERR_FILE_WRITE: &str = "file write failed";
