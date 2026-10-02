@@ -96,6 +96,34 @@ pub fn glyph_byte(character: char) -> u8 {
 pub fn font_pixels(character:u8)->u64{
     FPIXELS[(i32::from(character)-32).clamp(0,FPIXELS.len() as i32-1) as usize]
 }
+// Generated at compile time; no hand-maintained 256-glyph atlas needed.
+const BRAILLE_PIXELS: [u64; 256] = braille_masks();
+const fn braille_masks() -> [u64; 256] {
+    // Unicode dot order: left 1/2/3/7, right 4/5/6/8.
+    // One pixel per dot fits the existing 6x11 cell.
+    let dots = [(1,1), (1,3), (1,5), (4,1), (4,3), (4,5), (1,7), (4,7)];
+    let mut masks = [0; 256];
+    let mut pattern = 0;
+    while pattern < masks.len() {
+        let mut dot = 0;
+        while dot < dots.len() {
+            let (x,y) = dots[dot];
+            if pattern & (1 << dot) != 0 { masks[pattern] |= 1u64 << (63 - (y * FWIDTH + x)); }
+            dot += 1;
+        }
+        pattern += 1;
+    }
+    masks
+}
+
+/// Unicode glyph mask, including all 256 eight-dot Braille combinations.
+pub fn glyph_pixels(character: char) -> u64 {
+    if ('\u{2800}'..='\u{28ff}').contains(&character) {
+        BRAILLE_PIXELS[character as usize - 0x2800]
+    } else {
+        font_pixels(glyph_byte(character))
+    }
+}
 pub fn measure_text(text:&str)->(usize,usize){(text.chars().count()*FWIDTH,FHEIGHT)}
 pub fn measure_bytes(bytes:&[u8])->(usize,usize){(bytes.len()*FWIDTH,FHEIGHT)}
 pub fn stamp_text<T: Copy>(
@@ -124,7 +152,7 @@ pub fn stamp_text_with_stride<T: Copy>(
     text: &str,
     color: T,
 ) -> Result<(), &'static str> {
-    stamp_glyphs_with_stride(buffer, width, height, stride, x, y, text.chars().map(glyph_byte), color)
+    stamp_glyphs_with_stride(buffer, width, height, stride, x, y, text.chars().map(|ch| (glyph_pixels(ch), i32::from(glyph_byte(ch) == b'q'))), color)
 }
 pub fn stamp_bytes_with_stride<T: Copy>(
     buffer: &mut [T],
@@ -136,11 +164,11 @@ pub fn stamp_bytes_with_stride<T: Copy>(
     bytes: &[u8],
     color: T,
 ) -> Result<(), &'static str> {
-    stamp_glyphs_with_stride(buffer, width, height, stride, x, y, bytes.iter().copied(), color)
+    stamp_glyphs_with_stride(buffer, width, height, stride, x, y, bytes.iter().copied().map(|ch| (font_pixels(ch), i32::from(ch == b'q'))), color)
 }
 fn stamp_glyphs_with_stride<T: Copy>(
     buffer: &mut [T], width: usize, height: usize, stride: usize,
-    x: i32, y: i32, glyphs: impl Iterator<Item = u8>, color: T,
+    x: i32, y: i32, glyphs: impl Iterator<Item = (u64, i32)>, color: T,
 ) -> Result<(), &'static str> {
     if stride < width {
         return Err(ERRINV);
@@ -161,9 +189,7 @@ fn stamp_glyphs_with_stride<T: Copy>(
     let width_i32 = i32::try_from(width).map_err(|_| ERRINV)?;
     let height_i32 = i32::try_from(height).map_err(|_| ERRINV)?;
 
-    for (index, character) in glyphs.enumerate() {
-        let pixels = font_pixels(character);
-        let x_bias = i32::from(character == b'q');
+    for (index, (pixels, x_bias)) in glyphs.enumerate() {
         let glyph_x = x + index as i32 * FWIDTH as i32 + x_bias;
 
         for bit in 0..GLYBITS {
@@ -223,6 +249,26 @@ mod tests {
     use std::fs::{File,create_dir_all};
     use std::io::Write;
     use std::vec;
+
+    #[test]
+    fn braille_masks_and_stamping_cover_every_combination() {
+        let dots = [(1,1), (1,3), (1,5), (4,1), (4,3), (4,5), (1,7), (4,7)];
+        for pattern in 0u32..256 {
+            let ch = char::from_u32(0x2800 + pattern).unwrap();
+            let mut buffer = [0u8; FWIDTH * FHEIGHT];
+            let mut text = [0u8; 4];
+            stamp_text(&mut buffer, FWIDTH, FHEIGHT, 0, 0, ch.encode_utf8(&mut text), 1).unwrap();
+            assert_eq!(glyph_pixels(ch).count_ones(), pattern.count_ones());
+            assert_eq!(buffer.iter().filter(|&&pixel| pixel != 0).count(), pattern.count_ones() as usize);
+            for (dot, &(x,y)) in dots.iter().enumerate() {
+                assert_eq!(buffer[y * FWIDTH + x] != 0, pattern & (1 << dot) != 0);
+            }
+        }
+        assert_eq!(glyph_pixels('\u{2800}'), 0);
+        assert_eq!(glyph_pixels('A'), font_pixels(b'A'));
+        assert_eq!(glyph_pixels('§'), font_pixels(glyph_byte('§')));
+        assert_eq!(glyph_pixels('🙂'), font_pixels(b'?'));
+    }
 
     #[test]
     fn exposes_upstream_font_pixels() {
