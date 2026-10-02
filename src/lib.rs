@@ -70,10 +70,33 @@ pub const FPIXELS:[u64;224]=[
     z(0x7147, 48), z(0x5, 54), z(0x1, 37), z(0x2182087, 36),
     z(0x3023023, 37), z(0x6042107, 36), z(0x3FFFFFFF, 22), 0,
 ];
+// Atlas slots 0x80..0xFF follow CP850, not Unicode/Latin-1.
+// https://www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/PC/CP850.TXT
+const EXTENDED_CHARS: [char; 128] = [
+    'Ç', 'ü', 'é', 'â', 'ä', 'à', 'å', 'ç', 'ê', 'ë', 'è', 'ï', 'î', 'ì', 'Ä', 'Å',
+    'É', 'æ', 'Æ', 'ô', 'ö', 'ò', 'û', 'ù', 'ÿ', 'Ö', 'Ü', 'ø', '£', 'Ø', '×', 'ƒ',
+    'á', 'í', 'ó', 'ú', 'ñ', 'Ñ', 'ª', 'º', '¿', '®', '¬', '½', '¼', '¡', '«', '»',
+    '░', '▒', '▓', '│', '┤', 'Á', 'Â', 'À', '©', '╣', '║', '╗', '╝', '¢', '¥', '┐',
+    '└', '┴', '┬', '├', '─', '┼', 'ã', 'Ã', '╚', '╔', '╩', '╦', '╠', '═', '╬', '¤',
+    'ð', 'Ð', 'Ê', 'Ë', 'È', 'ı', 'Í', 'Î', 'Ï', '┘', '┌', '█', '▄', '¦', 'Ì', '▀',
+    'Ó', 'ß', 'Ô', 'Ò', 'õ', 'Õ', 'µ', 'þ', 'Þ', 'Ú', 'Û', 'Ù', 'ý', 'Ý', '¯', '´',
+    '\u{ad}', '±', '‗', '¾', '¶', '§', '÷', '¸', '°', '¨', '·', '¹', '³', '²', '■', '\u{a0}',
+];
+
+/// Return the existing atlas slot for one Unicode character. Unsupported
+/// characters occupy one replacement cell; byte APIs retain raw atlas indexing.
+pub fn glyph_byte(character: char) -> u8 {
+    if character.is_ascii() {
+        character as u8
+    } else {
+        EXTENDED_CHARS.iter().position(|&entry| entry == character)
+            .map_or(b'?', |index| 0x80 + index as u8)
+    }
+}
 pub fn font_pixels(character:u8)->u64{
     FPIXELS[(i32::from(character)-32).clamp(0,FPIXELS.len() as i32-1) as usize]
 }
-pub fn measure_text(text:&str)->(usize,usize){(text.bytes().count()*FWIDTH,FHEIGHT)}
+pub fn measure_text(text:&str)->(usize,usize){(text.chars().count()*FWIDTH,FHEIGHT)}
 pub fn measure_bytes(bytes:&[u8])->(usize,usize){(bytes.len()*FWIDTH,FHEIGHT)}
 pub fn stamp_text<T: Copy>(
     buffer: &mut [T],
@@ -84,7 +107,7 @@ pub fn stamp_text<T: Copy>(
     text: &str,
     color: T,
 ) -> Result<(), &'static str> {
-    stamp_bytes_with_stride(buffer, width, height, width, x, y, text.as_bytes(), color)
+    stamp_text_with_stride(buffer, width, height, width, x, y, text, color)
 }
 pub fn stamp_bytes<T: Copy>(
     buffer: &mut [T], width: usize, height: usize, x: i32, y: i32, bytes: &[u8], color: T
@@ -101,7 +124,7 @@ pub fn stamp_text_with_stride<T: Copy>(
     text: &str,
     color: T,
 ) -> Result<(), &'static str> {
-    stamp_bytes_with_stride(buffer,width,height,stride,x,y,text.as_bytes(),color)
+    stamp_glyphs_with_stride(buffer, width, height, stride, x, y, text.chars().map(glyph_byte), color)
 }
 pub fn stamp_bytes_with_stride<T: Copy>(
     buffer: &mut [T],
@@ -112,6 +135,12 @@ pub fn stamp_bytes_with_stride<T: Copy>(
     y: i32,
     bytes: &[u8],
     color: T,
+) -> Result<(), &'static str> {
+    stamp_glyphs_with_stride(buffer, width, height, stride, x, y, bytes.iter().copied(), color)
+}
+fn stamp_glyphs_with_stride<T: Copy>(
+    buffer: &mut [T], width: usize, height: usize, stride: usize,
+    x: i32, y: i32, glyphs: impl Iterator<Item = u8>, color: T,
 ) -> Result<(), &'static str> {
     if stride < width {
         return Err(ERRINV);
@@ -132,7 +161,7 @@ pub fn stamp_bytes_with_stride<T: Copy>(
     let width_i32 = i32::try_from(width).map_err(|_| ERRINV)?;
     let height_i32 = i32::try_from(height).map_err(|_| ERRINV)?;
 
-    for (index, character) in bytes.iter().copied().enumerate() {
+    for (index, character) in glyphs.enumerate() {
         let pixels = font_pixels(character);
         let x_bias = i32::from(character == b'q');
         let glyph_x = x + index as i32 * FWIDTH as i32 + x_bias;
@@ -204,6 +233,35 @@ mod tests {
         assert_eq!(font_pixels(b'0'), 0x7228A28A28A27000);
         assert_eq!(font_pixels(0), font_pixels(b' '));
         assert_eq!(font_pixels(255), 0);
+    }
+    #[test]
+    fn unicode_uses_existing_cp850_slots_and_one_cell_per_character() {
+        assert_eq!(glyph_byte('§'), 0xF5);
+        assert_eq!(font_pixels(glyph_byte('§')), 0x31240C49230248C0);
+        assert_eq!(glyph_byte('ä'), 0x84);
+        assert_eq!(glyph_byte('é'), 0x82);
+        assert_eq!(glyph_byte('─'), 0xC4);
+        assert_eq!(glyph_byte('🙂'), b'?');
+        for (index, &character) in EXTENDED_CHARS.iter().enumerate() {
+            assert_eq!(glyph_byte(character), 0x80 + index as u8);
+        }
+        let text = "§äé─🙂A";
+        let (width, height) = measure_text(text);
+        assert_eq!((width, height), (6 * FWIDTH, FHEIGHT));
+        let mut unicode = vec![0u8; width * height];
+        let mut bytes = unicode.clone();
+        stamp_text(&mut unicode, width, height, 0, 0, text, 1).unwrap();
+        stamp_bytes(&mut bytes, width, height, 0, 0, &[0xF5, 0x84, 0x82, 0xC4, b'?', b'A'], 1).unwrap();
+        assert_eq!(unicode, bytes);
+    }
+    #[test]
+    fn unicode_stride_and_clipping_match_raw_atlas_glyphs() {
+        let mut unicode = vec![9u8; 20 * FHEIGHT];
+        let mut bytes = unicode.clone();
+        stamp_text_with_stride(&mut unicode, 12, FHEIGHT, 20, -2, -1, "§é", 1).unwrap();
+        stamp_bytes_with_stride(&mut bytes, 12, FHEIGHT, 20, -2, -1, &[0xF5, 0x82], 1).unwrap();
+        assert_eq!(unicode, bytes);
+        assert!(unicode.chunks_exact(20).all(|row| row[12..].iter().all(|&p| p == 9)));
     }
     #[test]
     fn stamps_text_into_a_flat_buffer() {
