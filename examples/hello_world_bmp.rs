@@ -3,7 +3,7 @@ use std::fs::{File, create_dir_all};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use microfont::{ERRBUFF,ERRINV,FHEIGHT,measure_text,stamp_text};
+use microfont::{ERRBUFF, ERRINV, FHEIGHT, measure_text, stamp_text};
 
 const ERR_FILE_CREATE: &str = "file create failed";
 const ERR_FILE_WRITE: &str = "file write failed";
@@ -21,15 +21,7 @@ fn main() -> Result<(), &'static str> {
     let height = FHEIGHT + margin * 2;
 
     let mut bitmap = vec![0x101820u32; width * height];
-    stamp_text(
-        &mut bitmap,
-        width,
-        height,
-        margin as i32,
-        margin as i32,
-        text,
-        0xF7E27E,
-    )?;
+    stamp_text(&mut bitmap, width, height, margin as i32, margin as i32, text, 0xF7E27E)?;
 
     write_bmp24(&path, width, height, &bitmap)?;
     println!("ok: {}", path.display());
@@ -94,14 +86,17 @@ fn write_bmp24(
     Ok(())
 }
 
-fn write_u16(file:&mut File,value:u16)->Result<(),&'static str>{
-    file.write_all(&value.to_le_bytes()).map_err(|_|ERR_FILE_WRITE)
+fn write_u16(file: &mut File, value: u16) -> Result<(), &'static str> {
+    file.write_all(&value.to_le_bytes())
+        .map_err(|_| ERR_FILE_WRITE)
 }
 
-fn write_u32(file:&mut File,value:u32)->Result<(),&'static str>{
-    file.write_all(&value.to_le_bytes()).map_err(|_|ERR_FILE_WRITE)
+fn write_u32(file: &mut File, value: u32) -> Result<(), &'static str> {
+    file.write_all(&value.to_le_bytes())
+        .map_err(|_| ERR_FILE_WRITE)
 }
 
-fn write_i32(file:&mut File,value:i32)->Result<(),&'static str>{
-    file.write_all(&value.to_le_bytes()).map_err(|_|ERR_FILE_WRITE)
+fn write_i32(file: &mut File, value: i32) -> Result<(), &'static str> {
+    file.write_all(&value.to_le_bytes())
+        .map_err(|_| ERR_FILE_WRITE)
 }
