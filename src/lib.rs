@@ -299,13 +299,64 @@ const fn braille_masks() -> [u64; 256] {
     masks
 }
 
-/// Unicode glyph mask, including all 256 eight-dot Braille combinations.
-pub fn glyph_pixels(character: char) -> u64 {
-    if ('\u{2800}'..='\u{28ff}').contains(&character) {
-        BRAILLE_PIXELS[character as usize - 0x2800]
-    } else {
-        font_pixels(glyph_byte(character))
+// Full cells have 66 pixels; the raw CP850 atlas retains its original u64 format.
+const CELL_BITS: usize = FWIDTH * FHEIGHT;
+const BLOCK_PIXELS: [u128; 32] = block_masks();
+const fn block_masks() -> [u128; 32] {
+    // Quadrant bits: upper left, upper right, lower left, lower right.
+    let quadrants = [4, 8, 1, 13, 9, 7, 11, 2, 6, 14];
+    let mut masks = [0; 32];
+    let mut glyph = 0;
+    while glyph < masks.len() {
+        let mut y = 0;
+        while y < FHEIGHT {
+            let mut x = 0;
+            while x < FWIDTH {
+                // Round fractional coverage to the nearest physical pixel.
+                let on = match glyph {
+                    0 => y < FHEIGHT / 2,
+                    1..=8 => y >= FHEIGHT - (FHEIGHT * glyph + 4) / 8,
+                    9..=15 => x < (FWIDTH * (16 - glyph) + 4) / 8,
+                    16 => x >= (FWIDTH + 1) / 2,
+                    17 => (x + y * 2) % 4 == 0,
+                    18 => (x + y) % 2 == 0,
+                    19 => (x + y * 2) % 4 != 0,
+                    20 => y < (FHEIGHT + 4) / 8,
+                    21 => x >= FWIDTH - (FWIDTH + 4) / 8,
+                    _ => {
+                        let quadrant = (if y >= FHEIGHT / 2 { 2 } else { 0 })
+                            + if x >= (FWIDTH + 1) / 2 { 1 } else { 0 };
+                        quadrants[glyph - 22] & (1 << quadrant) != 0
+                    }
+                };
+                if on {
+                    masks[glyph] |= 1u128 << (CELL_BITS - 1 - (y * FWIDTH + x));
+                }
+                x += 1;
+            }
+            y += 1;
+        }
+        glyph += 1;
     }
+    masks
+}
+
+/// Full 6x11 Unicode cell, with the top-left pixel at bit 65 and bottom-right
+/// at bit 0. Includes all Braille patterns and Block Elements U+2580..U+259F.
+pub fn glyph_cell_pixels(character: char) -> u128 {
+    if ('\u{2580}'..='\u{259f}').contains(&character) {
+        BLOCK_PIXELS[character as usize - 0x2580]
+    } else if ('\u{2800}'..='\u{28ff}').contains(&character) {
+        (BRAILLE_PIXELS[character as usize - 0x2800] as u128) << 2
+    } else {
+        (font_pixels(glyph_byte(character)) as u128) << 2
+    }
+}
+
+/// Legacy 64-bit Unicode mask (top-left pixel at bit 63). The final two cell
+/// pixels are omitted; use `glyph_cell_pixels` for complete block glyphs.
+pub fn glyph_pixels(character: char) -> u64 {
+    (glyph_cell_pixels(character) >> 2) as u64
 }
 pub fn measure_text(text: &str) -> (usize, usize) {
     (text.chars().count() * FWIDTH, FHEIGHT)
@@ -353,7 +404,7 @@ pub fn stamp_text_with_stride<T: Copy>(
         x,
         y,
         text.chars()
-            .map(|ch| (glyph_pixels(ch), i32::from(glyph_byte(ch) == b'q'))),
+            .map(|ch| (glyph_cell_pixels(ch), i32::from(glyph_byte(ch) == b'q'))),
         color,
     )
 }
@@ -377,7 +428,7 @@ pub fn stamp_bytes_with_stride<T: Copy>(
         bytes
             .iter()
             .copied()
-            .map(|ch| (font_pixels(ch), i32::from(ch == b'q'))),
+            .map(|ch| ((font_pixels(ch) as u128) << 2, i32::from(ch == b'q'))),
         color,
     )
 }
@@ -388,7 +439,7 @@ fn stamp_glyphs_with_stride<T: Copy>(
     stride: usize,
     x: i32,
     y: i32,
-    glyphs: impl Iterator<Item = (u64, i32)>,
+    glyphs: impl Iterator<Item = (u128, i32)>,
     color: T,
 ) -> Result<(), &'static str> {
     if stride < width {
@@ -413,8 +464,8 @@ fn stamp_glyphs_with_stride<T: Copy>(
     for (index, (pixels, x_bias)) in glyphs.enumerate() {
         let glyph_x = x + index as i32 * FWIDTH as i32 + x_bias;
 
-        for bit in 0..GLYBITS {
-            if (pixels >> (63 - bit)) & 1 == 0 {
+        for bit in 0..CELL_BITS {
+            if (pixels >> (CELL_BITS - 1 - bit)) & 1 == 0 {
                 continue;
             }
 
@@ -550,6 +601,45 @@ mod tests {
         assert_eq!(glyph_pixels('A'), font_pixels(b'A'));
         assert_eq!(glyph_pixels('§'), font_pixels(glyph_byte('§')));
         assert_eq!(glyph_pixels('🙂'), font_pixels(b'?'));
+    }
+
+    #[test]
+    fn blocks_fill_the_default_cell_and_tile_without_gaps() {
+        for code in 0x2580..=0x259f {
+            let ch = char::from_u32(code).unwrap();
+            let mut buffer = [0u8; FWIDTH * FHEIGHT];
+            let mut text = [0u8; 4];
+            stamp_text(&mut buffer, FWIDTH, FHEIGHT, 0, 0, ch.encode_utf8(&mut text), 1).unwrap();
+            let bits = glyph_cell_pixels(ch);
+            assert!(bits != 0 && bits >> CELL_BITS == 0);
+            for (bit, pixel) in buffer.iter().enumerate() {
+                assert_eq!(*pixel != 0, bits & (1 << (CELL_BITS - 1 - bit)) != 0);
+            }
+        }
+        let mut full = [0u8; FWIDTH * 2 * FHEIGHT];
+        stamp_text(&mut full, FWIDTH * 2, FHEIGHT, 0, 0, "██", 1).unwrap();
+        assert!(full.iter().all(|&pixel| pixel == 1));
+        assert_eq!(glyph_cell_pixels('█').count_ones(), 66);
+        assert_eq!(glyph_cell_pixels('▌').count_ones(), 33);
+        assert_eq!(glyph_cell_pixels('▐').count_ones(), 33);
+        assert_eq!(glyph_cell_pixels('▌') | glyph_cell_pixels('▐'), glyph_cell_pixels('█'));
+        assert_eq!(glyph_cell_pixels('▀') | glyph_cell_pixels('▄'), glyph_cell_pixels('█'));
+        assert_eq!(glyph_cell_pixels('▀') & glyph_cell_pixels('▄'), 0);
+        for (step, ch) in "▁▂▃▄▅▆▇█".chars().enumerate() {
+            let rows = (FHEIGHT * (step + 1) + 4) / 8;
+            assert_eq!(glyph_cell_pixels(ch).count_ones() as usize, rows * FWIDTH);
+        }
+        for (step, ch) in "▏▎▍▌▋▊▉█".chars().enumerate() {
+            let columns = (FWIDTH * (step + 1) + 4) / 8;
+            assert_eq!(glyph_cell_pixels(ch).count_ones() as usize, columns * FHEIGHT);
+        }
+        // Clipping still respects row padding, including the last two cell pixels.
+        let mut padded = [9u8; 8 * FHEIGHT];
+        stamp_text_with_stride(&mut padded, 5, FHEIGHT, 8, -1, 0, "█", 1).unwrap();
+        for row in padded.chunks_exact(8) {
+            assert_eq!(&row[..5], &[1; 5]);
+            assert_eq!(&row[5..], &[9; 3]);
+        }
     }
 
     #[test]
