@@ -2,7 +2,7 @@
 
 MicroFont is a tiny `no_std` 6x11 bitmap font stamper for flat pixel buffers.
 
-![MicroFont glyph atlas preview](https://raw.githubusercontent.com/t4ce/MicroFont/true/docs/font-atlas.png)
+![MicroFont 3.9.9: CP850 atlas, Braille, and block elements](https://raw.githubusercontent.com/t4ce/MicroFont/v3.9.9/docs/font-atlas.png)
 
 It exposes the packed font table, direct byte/text stamping helpers, and ARGB helpers for alpha, underline, strikeout, and vertical flip styling. The library has no dependencies.
 
@@ -20,6 +20,8 @@ blocks fill all 66 pixels, so adjacent cells join without gaps.
 at bit 65. The legacy `glyph_pixels` mask uses bit 63 and omits the final two
 pixels. Raw byte/ARGB atlas rendering remains unchanged.
 
+Install with `cargo add microfont@3.9.9`.
+
 ```rust
 let mut pixels = vec![0u32; 88 * 27];
 microfont::stamp_text(&mut pixels, 88, 27, 8, 8, "Hello World!", 0xF7E27E)?;
@@ -32,3 +34,6 @@ cargo run --example hello_world_bmp
 ```
 
 Tests also generate visual atlas BMPs in `target/` for manual inspection.
+
+Regenerate the README atlas with `cargo run --example readme_previews`; convert
+`target/font-atlas.ppm` to `docs/font-atlas.png` at 2× scale with nearest-neighbor sampling.
