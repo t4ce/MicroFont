@@ -111,9 +111,9 @@ fn main() -> std::io::Result<()> {
     for c in p {
         // Composite ARGB samples over the preview background for the RGB export.
         let alpha = if c >> 24 == 0 { 255 } else { c >> 24 };
-        let blend = |shift| {
-            let fg = (c >> shift) & 255;
-            let bg = (0x101820u32 >> shift) & 255;
+        let blend = |shift: u32| {
+            let fg = (c >> shift) & 255u32;
+            let bg = (0x101820u32 >> shift) & 255u32;
             ((fg * alpha + bg * (255 - alpha) + 127) / 255) as u8
         };
         f.write_all(&[blend(16), blend(8), blend(0)])?;
