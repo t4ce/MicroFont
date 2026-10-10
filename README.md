@@ -2,7 +2,7 @@
 
 MicroFont is a tiny `no_std` 6x11 bitmap font stamper for flat pixel buffers.
 
-![MicroFont 3.9.9: CP850 atlas, Braille, and block elements](https://raw.githubusercontent.com/t4ce/MicroFont/v3.9.9/docs/font-atlas.png)
+![MicroFont 3.9.9: color CP850 atlas, Braille, block elements, and ARGB styles](https://raw.githubusercontent.com/t4ce/MicroFont/true/docs/font-atlas.png)
 
 It exposes the packed font table, direct byte/text stamping helpers, and ARGB helpers for alpha, underline, strikeout, and vertical flip styling. The library has no dependencies.
 
