@@ -1,0 +1,21 @@
+# Authored vocabulary for the GUI-focused Han subset; one group per line.
+# Comments are excluded from character selection. Latin/ASCII stays in CP850.
+# This is a coverage inventory, not a translated application resource catalog.
+文件 文件夹 目录 路径 名称 大小 类型 修改 日期 时间 属性 权限 所有者 用户 用户组
+打开 关闭 返回 前进 上级 根目录 主目录 桌面 下载 文档 图片 音乐 视频 回收站
+复制 剪切 粘贴 删除 重命名 新建 保存 另存为 移动 撤销 重做 搜索 查找 筛选 排序 刷新
+显示 隐藏 选择 全选 取消 确定 确认 应用 设置 选项 首选项 帮助 关于 退出
+连接 断开 网络 地址 端口 本地 远程 设备 磁盘 存储 可用 空间 总计 已用
+挂载 卸载 格式 格式化 加载 安装 更新 检查 重试 忽略 替换 覆盖 跳过 合并
+继续 暂停 停止 恢复 进度 完成 成功 失败 错误 警告 提示 信息 状态
+正在 等待 准备 就绪 无法 不存在 已存在 找不到 拒绝访问 只读 写入 读取 超时 损坏 未知 空
+允许 禁止 密码 账户 登录 注销 安全 默认 字体 语言 中文 简体 主题 颜色 深色 浅色
+窗口 菜单 工具栏 状态栏 快捷键 鼠标 键盘 拖动 单击 双击 图标 列表 详细 预览
+缩放 放大 缩小 百分比 宽度 高度 清空 内容 文件系统 压缩 解压 归档 目标 来源
+正常 启用 禁用 活动 最近 常用 收藏 快速访问 管理 编辑 查看 导入 导出
+分辨率 音量 静音 播放 录制 亮度 电源 电池 休眠 重启 关机 冲突 永久 删除 等待中
+任务 操作 执行 验证 哈希 校验和 版本 完整 部分 已选择 剩余 传输 速度 每秒 计算
+正在扫描 链接 挂载点 权限不足 网络不可用 文件过大 没有可用空间
+是否确定删除此文件夹 将无法恢复
+# Chinese punctuation used in messages; the middle dot already exists in CP850.
+，。！？：；、（）【】《》“”‘’…—

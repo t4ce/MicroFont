@@ -3,6 +3,9 @@
 #[cfg(test)]
 extern crate std;
 
+mod gui_han;
+pub use gui_han::{GUI_HAN_COUNT, GUI_HAN_TABLE_BYTES};
+
 pub const FHEIGHT: usize = 11;
 pub const FWIDTH: usize = 6;
 pub const ERRINV: &str = "invalid dimensions";
@@ -358,7 +361,7 @@ const fn block_masks() -> [u128; 32] {
 }
 
 /// Full 6x11 Unicode cell, with the top-left pixel at bit 65 and bottom-right
-/// at bit 0. Includes all Braille patterns and Block Elements U+2580..U+259F.
+/// at bit 0. Includes Braille, Block Elements, and the one-cell GUI Han subset.
 pub fn glyph_cell_pixels(character: char) -> u128 {
     if ('\u{e000}'..='\u{e004}').contains(&character) {
         let cell = character as usize - 0xe000;
@@ -367,6 +370,8 @@ pub fn glyph_cell_pixels(character: char) -> u128 {
         BLOCK_PIXELS[character as usize - 0x2580]
     } else if ('\u{2800}'..='\u{28ff}').contains(&character) {
         (BRAILLE_PIXELS[character as usize - 0x2800] as u128) << 2
+    } else if let Some(pixels) = gui_han::glyph_cell_pixels(character) {
+        pixels
     } else {
         (font_pixels(glyph_byte(character)) as u128) << 2
     }
