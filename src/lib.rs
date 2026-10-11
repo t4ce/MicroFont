@@ -15,6 +15,22 @@ const fn z(bits: u64, shift: u32) -> u64 {
     bits << shift
 }
 
+/// Icons composed of consecutive 6x11 cell masks (top-left at bit 65).
+pub const SPECIAL: [(char, &'static [u128]); 2] = [
+    ('\u{2328}', &[0x007E0AB287B81F000, 0x00F81BC3AF507E000]),
+    ('\u{1F5FA}', &[0x1F82FFAE8E186189F, 0x1F826BC70C78E289F, 0x1E87DF7DE51BED85E]),
+];
+
+/// Internal cell characters used by fixed-cell terminal renderers: keyboard
+/// left/right, then the map's three cells, all in left-to-right order.
+pub fn special_cells(character: char) -> Option<&'static [char]> {
+    match character {
+        '\u{2328}' => Some(&['\u{e000}', '\u{e001}']),
+        '\u{1f5fa}' => Some(&['\u{e002}', '\u{e003}', '\u{e004}']),
+        _ => None,
+    }
+}
+
 pub const FPIXELS: [u64; 224] = [
     0,
     0x2082082080082000,
@@ -344,7 +360,10 @@ const fn block_masks() -> [u128; 32] {
 /// Full 6x11 Unicode cell, with the top-left pixel at bit 65 and bottom-right
 /// at bit 0. Includes all Braille patterns and Block Elements U+2580..U+259F.
 pub fn glyph_cell_pixels(character: char) -> u128 {
-    if ('\u{2580}'..='\u{259f}').contains(&character) {
+    if ('\u{e000}'..='\u{e004}').contains(&character) {
+        let cell = character as usize - 0xe000;
+        if cell < 2 { SPECIAL[0].1[cell] } else { SPECIAL[1].1[cell - 2] }
+    } else if ('\u{2580}'..='\u{259f}').contains(&character) {
         BLOCK_PIXELS[character as usize - 0x2580]
     } else if ('\u{2800}'..='\u{28ff}').contains(&character) {
         (BRAILLE_PIXELS[character as usize - 0x2800] as u128) << 2
@@ -359,7 +378,7 @@ pub fn glyph_pixels(character: char) -> u64 {
     (glyph_cell_pixels(character) >> 2) as u64
 }
 pub fn measure_text(text: &str) -> (usize, usize) {
-    (text.chars().count() * FWIDTH, FHEIGHT)
+    (text.chars().map(|ch| special_cells(ch).map_or(1, |cells| cells.len())).sum::<usize>() * FWIDTH, FHEIGHT)
 }
 pub fn measure_bytes(bytes: &[u8]) -> (usize, usize) {
     (bytes.len() * FWIDTH, FHEIGHT)
@@ -403,8 +422,12 @@ pub fn stamp_text_with_stride<T: Copy>(
         stride,
         x,
         y,
-        text.chars()
-            .map(|ch| (glyph_cell_pixels(ch), i32::from(glyph_byte(ch) == b'q'))),
+        text.chars().flat_map(|ch| {
+            let cells = special_cells(ch);
+            let ordinary = if cells.is_none() { Some(ch) } else { None };
+            cells.into_iter().flatten().copied().chain(ordinary)
+                .map(|cell| (glyph_cell_pixels(cell), i32::from(glyph_byte(cell) == b'q')))
+        }),
         color,
     )
 }
@@ -854,5 +877,26 @@ mod tests {
     }
     fn wi32(f: &mut File, v: i32) -> std::io::Result<()> {
         f.write_all(&v.to_le_bytes())
+    }
+}
+
+#[cfg(test)]
+mod special_tests {
+    use super::*;
+    #[test]
+    fn special_icons_stamp_exact_cells_and_advance_by_icon_width() {
+        for (ch, masks) in SPECIAL {
+            let text = std::format!("{ch}A");
+            let width = (masks.len() + 1) * FWIDTH;
+            assert_eq!(measure_text(&text), (width, FHEIGHT));
+            let mut pixels = std::vec![0u8; width * FHEIGHT];
+            stamp_text(&mut pixels, width, FHEIGHT, 0, 0, &text, 1).unwrap();
+            for (cell, mask) in masks.iter().copied().chain(core::iter::once(glyph_cell_pixels('A'))).enumerate() {
+                for bit in 0..CELL_BITS {
+                    assert_eq!(pixels[(bit / FWIDTH) * width + cell * FWIDTH + bit % FWIDTH],
+                        ((mask >> (CELL_BITS - 1 - bit)) & 1) as u8);
+                }
+            }
+        }
     }
 }
