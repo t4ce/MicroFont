@@ -9,8 +9,8 @@
 mod data;
 
 pub const GUI_HAN_COUNT: usize = data::CODES.len();
-pub const GUI_HAN_TABLE_BYTES: usize = data::CODES.len() * 2
-    + data::CHECKPOINTS.len() * 2 + data::DATA.len();
+pub const GUI_HAN_TABLE_BYTES: usize =
+    data::CODES.len() * 2 + data::CHECKPOINTS.len() * 2 + data::DATA.len();
 
 fn read_u16(at: usize) -> usize {
     u16::from_le_bytes([data::DATA[at], data::DATA[at + 1]]) as usize
@@ -29,10 +29,13 @@ fn record_len(tag: u8) -> usize {
 fn literal(at: usize) -> u128 {
     let tag = data::DATA[at];
     if tag < 8 {
-        let packed = ((tag as u64) << 32) | u32::from_le_bytes([
-            data::DATA[at + 1], data::DATA[at + 2],
-            data::DATA[at + 3], data::DATA[at + 4],
-        ]) as u64;
+        let packed = ((tag as u64) << 32)
+            | u32::from_le_bytes([
+                data::DATA[at + 1],
+                data::DATA[at + 2],
+                data::DATA[at + 3],
+                data::DATA[at + 4],
+            ]) as u64;
         let mut mask = 0u128;
         for row in 0..7 {
             mask |= (((packed >> (row * 5)) & 31) as u128) << (12 + row * 6 + 1);
@@ -54,8 +57,9 @@ fn decode(at: usize) -> u128 {
         0..=11 => literal(at),
         32 => literal(read_u16(at + 1)),
         128..=191 => literal(read_u16(at + 1)) ^ (1u128 << (tag & 63)),
-        192..=255 => literal(read_u16(at + 2))
-            ^ (1u128 << (tag & 63)) ^ (1u128 << data::DATA[at + 1]),
+        192..=255 => {
+            literal(read_u16(at + 2)) ^ (1u128 << (tag & 63)) ^ (1u128 << data::DATA[at + 1])
+        }
         _ => unreachable!("invalid generated glyph record"),
     }
 }
@@ -106,8 +110,13 @@ mod tests {
     #[test]
     fn every_gui_word_is_covered_and_unselected_characters_stay_unsupported() {
         for line in include_str!("../tools/gui-zh-hans.txt").lines() {
-            if line.starts_with('#') { continue; }
-            for ch in line.chars().filter(|ch| !ch.is_ascii() && !ch.is_whitespace()) {
+            if line.starts_with('#') {
+                continue;
+            }
+            for ch in line
+                .chars()
+                .filter(|ch| !ch.is_ascii() && !ch.is_whitespace())
+            {
                 assert!(glyph_cell_pixels(ch).is_some(), "missing GUI glyph {ch}");
             }
         }
@@ -121,13 +130,20 @@ mod tests {
         assert_eq!(crate::measure_text(text), (18, 11));
         let mut pixels = [0u8; 22 * 13];
         crate::stamp_text_with_stride(&mut pixels, 20, 12, 22, -2, 1, text, 1).unwrap();
-        let masks: std::vec::Vec<_> = text.chars().map(|ch| glyph_cell_pixels(ch).unwrap()).collect();
+        let masks: std::vec::Vec<_> = text
+            .chars()
+            .map(|ch| glyph_cell_pixels(ch).unwrap())
+            .collect();
         for y in 0..13 {
             for x in 0..22 {
                 let sx = x as i32 + 2;
                 let sy = y as i32 - 1;
-                let expected = x < 20 && y < 12 && (0..18).contains(&sx) && (0..11).contains(&sy)
-                    && (masks[sx as usize / 6] >> (65 - (sy as usize * 6 + sx as usize % 6))) & 1 != 0;
+                let expected = x < 20
+                    && y < 12
+                    && (0..18).contains(&sx)
+                    && (0..11).contains(&sy)
+                    && (masks[sx as usize / 6] >> (65 - (sy as usize * 6 + sx as usize % 6))) & 1
+                        != 0;
                 assert_eq!(pixels[y * 22 + x] != 0, expected);
             }
         }
