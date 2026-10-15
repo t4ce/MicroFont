@@ -4,6 +4,7 @@
 extern crate std;
 
 mod gui_han;
+mod ui_symbols;
 pub use gui_han::{GUI_HAN_COUNT, GUI_HAN_TABLE_BYTES};
 
 pub const FHEIGHT: usize = 11;
@@ -370,6 +371,8 @@ pub fn glyph_cell_pixels(character: char) -> u128 {
         BLOCK_PIXELS[character as usize - 0x2580]
     } else if ('\u{2800}'..='\u{28ff}').contains(&character) {
         (BRAILLE_PIXELS[character as usize - 0x2800] as u128) << 2
+    } else if let Some(pixels) = ui_symbols::glyph_cell_pixels(character) {
+        pixels
     } else if let Some(pixels) = gui_han::glyph_cell_pixels(character) {
         pixels
     } else {

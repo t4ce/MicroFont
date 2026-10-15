@@ -51,3 +51,8 @@ Tests also generate visual atlas BMPs in `target/` for manual inspection.
 
 Regenerate the README atlas with `cargo run --example readme_previews`; convert
 `target/font-atlas.ppm` to `docs/font-atlas.png` at 2× scale with nearest-neighbor sampling.
+
+Unicode text also includes 55 TermDir UI symbols: border joins, rounded corners,
+arrows, menu markers, segmented digits, and file/action icons. Each occupies one
+6×11 cell, including the fullwidth code points and emoji; raw byte atlas APIs
+retain their existing mappings. The glyph masks are in `src/ui_symbols.rs`.
