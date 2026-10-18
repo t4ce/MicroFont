@@ -63,12 +63,14 @@ retain their staircase pixels. The four rounded corners are the only masks
 without raster data. Four separated horizontal dashes cannot fit in six
 columns, so those drafts are approximations.
 `glyph_cell_pixels` and Unicode stamping use these canonical masks directly.
-The legacy CP850 `FPIXELS` view is assembled at compile time from the same box
-and block tables, `BASIC_SYMBOLS`, and the remaining 100 extended masks in
-`CORE_SYMBOLS`. Each core entry pairs a visible character with its mask; its
-position in that table does not determine its byte slot. The 224 byte slots
-and fast lookup remain intact. The remaining UI symbol masks live directly
-in `lib.rs`.
+`CP850_SYMBOLS` in `src/cp850.rs` lists all 256 display-code slots as visible
+characters with full 6×11 masks, including the graphical control slots and
+`⌂` at 0x7F. Missing masks are zero. Shared Basic Latin, box drawing, block
+and UI masks are referenced at compile time; the remaining 100 extended
+masks are owned here. The low-slot `¶` and `§` reuse their extended-slot masks.
+The legacy 224-slot `FPIXELS` view and byte lookup helpers are derived here
+as well, preserving their existing indexing and control-byte behavior.
+The remaining UI symbol masks live directly in `lib.rs`.
 
 
 Text helpers accept Unicode and select the existing CP850 atlas glyphs, including
