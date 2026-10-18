@@ -1,5 +1,8 @@
 #![no_std]
 
+#[cfg(feature = "raster")]
+extern crate alloc;
+
 #[cfg(test)]
 extern crate std;
 
@@ -24,6 +27,8 @@ pub use blocks::BLOCK_SYMBOLS;
 mod stamp;
 #[cfg(feature = "raster")]
 pub mod raster;
+#[cfg(feature = "raster")]
+pub mod raster_tri;
 #[cfg(feature = "stamp")]
 pub use stamp::{
     stamp_argb, stamp_argb_stride, stamp_bytes, stamp_bytes_with_stride,

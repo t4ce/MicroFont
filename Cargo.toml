@@ -23,11 +23,12 @@ include = [
 ]
 
 [dependencies]
+libm = { version = "0.2", default-features = false, optional = true }
 
 [features]
 default = ["stamp"]
 stamp = []
-raster = []
+raster = ["dep:libm"]
 han = []
 
 [[example]]

@@ -4,7 +4,7 @@ MicroFont is a tiny `no_std` 6x11 bitmap font stamper for flat pixel buffers.
 
 ![MicroFont 3.9.9: color CP850 atlas, Braille, block elements, and ARGB styles](https://raw.githubusercontent.com/t4ce/MicroFont/true/docs/font-atlas.png)
 
-It exposes the packed font table, direct byte/text stamping helpers, and ARGB helpers for alpha, underline, strikeout, and vertical flip styling. The library has no dependencies.
+It exposes the packed font table, direct byte/text stamping helpers, and ARGB helpers for alpha, underline, strikeout, and vertical flip styling. Raw data and stamping have no dependencies; optional CPU triangle reconstruction uses `alloc` and `libm` with `raster`.
 
 The default `stamp` feature enables all buffer stamping helpers. Use
 `default-features = false` for pixel data and lookup APIs alone. The independent
@@ -31,15 +31,15 @@ Unicode stamping expand them just like the keyboard/map icons. Space displays
 `SP` in two cells. `control_label_cells` exposes their precomputed mask slices.
 Single-cell/raw byte masks retain their existing layout; Unicode DEL expands
 to the three-cell `DEL` label.
-Basic Latin has no quad raster data yet.
+Basic Latin uses triangle reconstruction rather than quad raster data.
 `FontShape::INFLUENCE_WIDTH` is fixed at 0.20 source units for both shapes and
 both Dista/Convo families. `FontShape::body_threshold()` returns 0.24 for Meso
 and 0.70 for Lean. Per-glyph seed/reach overrides are independent of these settings.
 `FontDetail` selects triangle tessellation independently of family and shape:
 `Fine = 0` (the default) uses 12 subdivisions per source-cell unit, and `High = 1`
 uses 24, matching the HTML presets. `FontDetail::from_level` accepts a 0/1 setting;
-`subdivisions_per_cell()` exposes the geometry resolution for the future triangle
-builder. The existing pixel and quad data are unaffected.
+`subdivisions_per_cell()` sets the triangle builder's geometry resolution.
+The existing pixel and quad data are unaffected.
 
 
 With `raster`, `basic_seed` selects the common reconstruction input before any
@@ -47,8 +47,17 @@ Dista/Convo or Meso/Lean choice. `BASIC_RASTER_OVERRIDES` currently contains onl
 `/`: five collinear sites instead of the bitmap's nine staircase sites, tagged
 `long_reach`. Its full-cell mask is `0x2004008010020000`. Short reach is 1.76;
 long reach is 2.76. All other Basic Latin seeds use their existing masks and
-short reach. This is seed data for future triangle reconstruction, not quad
-geometry, and the original bitmap masks remain unchanged.
+short reach. The original bitmap masks remain unchanged.
+
+`raster_tri::dista_triangles(character, shape, detail)` constructs the distance
+envelope; `raster_tri::convo_triangles(character, shape, detail)` constructs the
+convolved membrane with 66% density balance. Both run on the CPU and return an
+allocated `TriangleMesh` containing source-space vertices and triangle-list
+indices. They accept single printable Basic Latin glyphs (`!` through `~`);
+controls, `SP`, `DEL` and other Unicode characters return `None`. Both use
+neutral connections, closed-disc shortcut pruning, compact Gaussian support,
+adaptive interior merging and welded, stitched boundary triangles, following
+the HTML field construction. Detail changes actual mesh geometry.
 
 `BLOCK_SYMBOLS` lists all 32 Block Elements as visible characters beside embedded
 hex masks. With `raster`, `BLOCK_QUADS`, `block_quad_slice` and `block_quads`
