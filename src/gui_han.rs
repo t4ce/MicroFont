@@ -130,6 +130,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "stamp")]
     fn chinese_text_uses_one_cell_and_preserves_clipping_stride_and_padding() {
         let text = "文件夹";
         assert_eq!(crate::measure_text(text), (18, 11));

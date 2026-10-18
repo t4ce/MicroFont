@@ -24,5 +24,18 @@ include = [
 
 [dependencies]
 
+[features]
+default = ["stamp"]
+stamp = []
+raster = []
+
+[[example]]
+name = "hello_world_bmp"
+required-features = ["stamp"]
+
+[[example]]
+name = "readme_previews"
+required-features = ["stamp"]
+
 [profile.release]
 opt-level = 3

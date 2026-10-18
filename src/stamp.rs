@@ -1,10 +1,11 @@
 //! Bitmap stamping into flat pixel buffers.
 use crate::{
-    CELL_BITS, ERRBUFF, ERRINV, FHEIGHT, FLIPY, FWIDTH, STRIKE, ULINE,
+    ERRBUFF, ERRINV, FHEIGHT, FLIPY, FWIDTH, STRIKE, ULINE,
     font_pixels, glyph_byte, glyph_cell_pixels, special_cells,
 };
 
 const GLYBITS: usize = 64;
+const CELL_BITS: usize = FWIDTH * FHEIGHT;
 
 pub fn stamp_text<T: Copy>(
     buffer: &mut [T],

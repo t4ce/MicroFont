@@ -1,9 +1,18 @@
 #![no_std]
 
+#[cfg(test)]
+extern crate std;
 
 mod gui_han;
 mod ui_symbols;
+mod braille;
+mod blocks;
+pub use blocks::BLOCK_SYMBOLS;
+#[cfg(feature = "stamp")]
 mod stamp;
+#[cfg(feature = "raster")]
+pub mod raster;
+#[cfg(feature = "stamp")]
 pub use stamp::{
     stamp_argb, stamp_argb_stride, stamp_bytes, stamp_bytes_with_stride,
     stamp_text, stamp_text_with_stride,
@@ -299,79 +308,6 @@ pub fn glyph_character(byte: u8) -> Option<char> {
         _ => None,
     }
 }
-// Generated at compile time; no hand-maintained 256-glyph atlas needed.
-const BRAILLE_PIXELS: [u64; 256] = braille_masks();
-const fn braille_masks() -> [u64; 256] {
-    // Unicode dot order: left 1/2/3/7, right 4/5/6/8.
-    // One pixel per dot fits the existing 6x11 cell.
-    let dots = [
-        (1, 1),
-        (1, 3),
-        (1, 5),
-        (4, 1),
-        (4, 3),
-        (4, 5),
-        (1, 7),
-        (4, 7),
-    ];
-    let mut masks = [0; 256];
-    let mut pattern = 0;
-    while pattern < masks.len() {
-        let mut dot = 0;
-        while dot < dots.len() {
-            let (x, y) = dots[dot];
-            if pattern & (1 << dot) != 0 {
-                masks[pattern] |= 1u64 << (63 - (y * FWIDTH + x));
-            }
-            dot += 1;
-        }
-        pattern += 1;
-    }
-    masks
-}
-
-// Full cells have 66 pixels; the raw CP850 atlas retains its original u64 format.
-const CELL_BITS: usize = FWIDTH * FHEIGHT;
-const BLOCK_PIXELS: [u128; 32] = block_masks();
-const fn block_masks() -> [u128; 32] {
-    // Quadrant bits: upper left, upper right, lower left, lower right.
-    let quadrants = [4, 8, 1, 13, 9, 7, 11, 2, 6, 14];
-    let mut masks = [0; 32];
-    let mut glyph = 0;
-    while glyph < masks.len() {
-        let mut y = 0;
-        while y < FHEIGHT {
-            let mut x = 0;
-            while x < FWIDTH {
-                // Round fractional coverage to the nearest physical pixel.
-                let on = match glyph {
-                    0 => y < FHEIGHT / 2,
-                    1..=8 => y >= FHEIGHT - (FHEIGHT * glyph + 4) / 8,
-                    9..=15 => x < (FWIDTH * (16 - glyph) + 4) / 8,
-                    16 => x >= (FWIDTH + 1) / 2,
-                    17 => (x + y * 2) % 4 == 0,
-                    18 => (x + y) % 2 == 0,
-                    19 => (x + y * 2) % 4 != 0,
-                    20 => y < (FHEIGHT + 4) / 8,
-                    21 => x >= FWIDTH - (FWIDTH + 4) / 8,
-                    _ => {
-                        let quadrant = (if y >= FHEIGHT / 2 { 2 } else { 0 })
-                            + if x >= (FWIDTH + 1) / 2 { 1 } else { 0 };
-                        quadrants[glyph - 22] & (1 << quadrant) != 0
-                    }
-                };
-                if on {
-                    masks[glyph] |= 1u128 << (CELL_BITS - 1 - (y * FWIDTH + x));
-                }
-                x += 1;
-            }
-            y += 1;
-        }
-        glyph += 1;
-    }
-    masks
-}
-
 /// Full 6x11 Unicode cell, with the top-left pixel at bit 65 and bottom-right
 /// at bit 0. Includes Braille, Block Elements, and the one-cell GUI Han subset.
 pub fn glyph_cell_pixels(character: char) -> u128 {
@@ -379,9 +315,9 @@ pub fn glyph_cell_pixels(character: char) -> u128 {
         let cell = character as usize - 0xe000;
         if cell < 2 { SPECIAL[0].1[cell] } else { SPECIAL[1].1[cell - 2] }
     } else if ('\u{2580}'..='\u{259f}').contains(&character) {
-        BLOCK_PIXELS[character as usize - 0x2580]
+        BLOCK_SYMBOLS[character as usize - 0x2580].1
     } else if ('\u{2800}'..='\u{28ff}').contains(&character) {
-        (BRAILLE_PIXELS[character as usize - 0x2800] as u128) << 2
+        (braille::DATA.pixels[character as usize - 0x2800] as u128) << 2
     } else if let Some(pixels) = ui_symbols::glyph_cell_pixels(character) {
         pixels
     } else if let Some(pixels) = gui_han::glyph_cell_pixels(character) {

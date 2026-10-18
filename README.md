@@ -6,6 +6,26 @@ MicroFont is a tiny `no_std` 6x11 bitmap font stamper for flat pixel buffers.
 
 It exposes the packed font table, direct byte/text stamping helpers, and ARGB helpers for alpha, underline, strikeout, and vertical flip styling. The library has no dependencies.
 
+The default `stamp` feature enables all buffer stamping helpers. Use
+`default-features = false` for pixel data and lookup APIs alone. The independent
+`raster` feature adds `raster::BRAILLE_QUADS`, `braille_quad_slice` and
+`braille_quads`; it does not require `stamp`. For example:
+
+```toml
+microfont = { version = "3.9.9", default-features = false, features = ["raster"] }
+```
+
+Braille pixels are always generated at compile time. With `raster`, the same pass
+also prepares every glyph's quads in 6×11 source coordinates. Access borrows
+static data; no runtime warm-up or allocation is required. This precomputation
+does not guarantee that the hardware CPU cache contains the data.
+
+`BLOCK_SYMBOLS` lists all 32 Block Elements as visible characters beside embedded
+hex masks. With `raster`, `BLOCK_QUADS`, `block_quad_slice` and `block_quads`
+provide their exact 6×11 rectangles, derived at compile time from those masks.
+Every solid block uses at most two non-overlapping quads. Shades `░▒▓` remain
+pixel-only and return `None` from the block raster lookup.
+
 Text helpers accept Unicode and select the existing CP850 atlas glyphs, including
 `§`, accented Latin letters and box drawing characters. Ordinary characters occupy
 one cell; unsupported characters display `?`. Byte and ARGB helpers continue to
