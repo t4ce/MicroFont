@@ -136,12 +136,14 @@ pub const BASIC_SYMBOLS: [(char, u128); 128] = [
     ('\u{7f}', 0), // DEL
 ];
 
-/// Raster-only seed edits, shared by Dista/Convo and Meso/Lean alike.
+/// Raster-only seed edits, shared by Dista Meso and Lean.
+/// `%` uses 13 sites: two four-site rings and a five-site diagonal, short reach.
 /// `/` removes the four staircase sites: five collinear sites remain at
 /// (4,0), (3,2), (2,4), (1,6), (0,8), connected with long reach.
 /// These are reconstruction inputs, not replacement bitmap glyphs or quads.
 #[cfg(feature = "raster")]
-pub const BASIC_RASTER_OVERRIDES: [(char, crate::raster::GlyphSeed); 1] = [
+pub const BASIC_RASTER_OVERRIDES: [(char, crate::raster::GlyphSeed); 2] = [
+    ('%', crate::raster::GlyphSeed { pixels: 0x10a12108424284000, long_reach: false }),
     ('/', crate::raster::GlyphSeed { pixels: 0x2004008010020000, long_reach: true }),
 ];
 

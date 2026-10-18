@@ -1,4 +1,4 @@
-//! Triangle tessellation detail, independent of font family and shape.
+//! Dista triangle tessellation detail, independent of its Meso/Lean shape.
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[repr(u8)]

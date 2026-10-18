@@ -7,13 +7,14 @@ pub enum FontShape {
 }
 
 impl FontShape {
-    /// Shared influence width in source-cell units, for both font families.
+    /// Dista influence width in source-cell units, shared by Meso and Lean.
     pub const INFLUENCE_WIDTH: f64 = 0.20;
 
+    /// Dista uses 90° and 45° angles with softly rounded corners.
     pub const fn body_threshold(self) -> f64 {
         match self {
-            Self::Meso => 0.24,
-            Self::Lean => 0.70,
+            Self::Meso => 0.22,
+            Self::Lean => 0.63,
         }
     }
 }

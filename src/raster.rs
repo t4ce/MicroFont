@@ -6,7 +6,7 @@ pub use crate::basic::BASIC_RASTER_OVERRIDES;
 pub const SHORT_CONNECTION_REACH: f64 = 1.76;
 pub const LONG_CONNECTION_REACH: f64 = 2.76;
 
-/// Input to reconstruction, before selecting font family or Meso/Lean shape.
+/// Input to Dista reconstruction, before selecting its Meso/Lean shape.
 /// `pixels` uses the full 66-bit cell; `long_reach` belongs to this seed alone.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct GlyphSeed {
