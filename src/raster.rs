@@ -21,7 +21,7 @@ impl<const N: usize> QuadGlyph<N> {
         len: 0,
     };
 
-    /// Only the filled quads, in Unicode dot order.
+    /// Only the filled quads, in generation order.
     pub fn quads(&self) -> &[Quad] {
         &self.quads[..self.len as usize]
     }
@@ -29,9 +29,6 @@ impl<const N: usize> QuadGlyph<N> {
 
 /// At most eight single-dot quads per Braille glyph.
 pub type BrailleGlyph = QuadGlyph<8>;
-/// At most two filled rectangles per solid Block Element.
-pub type BlockGlyph = QuadGlyph<2>;
-
 /// All 256 Braille glyphs, populated at compile time alongside their pixel masks.
 /// No initialization, warm-up, allocation or geometry generation is needed.
 pub static BRAILLE_QUADS: [BrailleGlyph; 256] = crate::braille::DATA.quads;
@@ -50,18 +47,30 @@ pub fn braille_quads(character: char) -> Option<impl Iterator<Item = Quad>> {
     Some(braille_quad_slice(character)?.iter().copied())
 }
 
-/// Precomputed solid Block Elements. The three shade patterns have no quad data.
-pub static BLOCK_QUADS: [Option<BlockGlyph>; 32] = crate::blocks::rasterize();
+/// Packed rectangles and glyph boundaries in Block Elements Unicode order.
+/// Glyph `i` uses `quads[offsets[i]..offsets[i + 1]]`.
+pub struct BlockRaster<const N: usize> {
+    pub quads: [Quad; N],
+    pub offsets: [u16; 33],
+}
 
-/// Borrow one or two filled rectangles; shades and non-blocks return `None`.
+/// Number of rectangles in the exact packed cover of all 32 block masks.
+pub const BLOCK_QUAD_COUNT: usize = crate::blocks::rasterize::<0>().offsets[32] as usize;
+/// All blocks use the same compile-time cover and share one packed table.
+pub static BLOCK_QUADS: BlockRaster<BLOCK_QUAD_COUNT> = crate::blocks::rasterize();
+
+/// Borrow exact filled rectangles for any Block Element; non-blocks return `None`.
 pub fn block_quad_slice(character: char) -> Option<&'static [Quad]> {
     if !('\u{2580}'..='\u{259f}').contains(&character) {
         return None;
     }
-    BLOCK_QUADS[character as usize - 0x2580].as_ref().map(BlockGlyph::quads)
+    let index = character as usize - 0x2580;
+    Some(&BLOCK_QUADS.quads[
+        BLOCK_QUADS.offsets[index] as usize..BLOCK_QUADS.offsets[index + 1] as usize
+    ])
 }
 
-/// Iterate precomputed solid block rectangles without allocation.
+/// Iterate precomputed block rectangles, including shades, without allocation.
 pub fn block_quads(character: char) -> Option<impl Iterator<Item = Quad>> {
     Some(block_quad_slice(character)?.iter().copied())
 }
@@ -72,16 +81,10 @@ mod tests {
     use crate::FWIDTH;
 
     #[test]
-    fn solid_blocks_use_at_most_two_exact_nonoverlapping_quads() {
+    fn all_blocks_have_exact_nonoverlapping_quads() {
         for (ch, expected) in crate::BLOCK_SYMBOLS {
-            let quads = block_quad_slice(ch);
-            if ('░'..='▓').contains(&ch) {
-                assert!(quads.is_none());
-                assert_ne!(crate::glyph_cell_pixels(ch), 0);
-                continue;
-            }
-            let quads = quads.unwrap();
-            assert!((1..=2).contains(&quads.len()));
+            let quads = block_quad_slice(ch).unwrap();
+            assert!((1..=66).contains(&quads.len()));
             let mut pixels = 0;
             for quad in quads {
                 let [left, top] = quad.top_left;
@@ -97,8 +100,6 @@ mod tests {
             }
             assert_eq!(pixels, expected, "{ch}");
             assert_eq!(pixels, crate::glyph_cell_pixels(ch));
-            let count = quads.len();
-            if !('▖'..='▟').contains(&ch) { assert_eq!(count, 1); }
         }
         assert!(block_quad_slice('A').is_none());
     }

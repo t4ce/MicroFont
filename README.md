@@ -22,9 +22,10 @@ does not guarantee that the hardware CPU cache contains the data.
 
 `BLOCK_SYMBOLS` lists all 32 Block Elements as visible characters beside embedded
 hex masks. With `raster`, `BLOCK_QUADS`, `block_quad_slice` and `block_quads`
-provide their exact 6×11 rectangles, derived at compile time from those masks.
-Every solid block uses at most two non-overlapping quads. Shades `░▒▓` remain
-pixel-only and return `None` from the block raster lookup.
+provide their exact 6×11 rectangles, derived at compile time from those masks
+by one shared cover algorithm. All 32 characters share a packed array of 104
+quads and 33 offsets (482 bytes total); no per-glyph padding or shade-specific
+lookup is needed. Pixel masks remain unchanged.
 
 Text helpers accept Unicode and select the existing CP850 atlas glyphs, including
 `§`, accented Latin letters and box drawing characters. Ordinary characters occupy

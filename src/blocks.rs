@@ -1,5 +1,5 @@
 //! Block Elements in Unicode order; full 6×11 masks, top-left at bit 65.
-//! The three shade patterns remain pixel-only.
+//! Solid blocks use at most two quads; shades use an exact rectangle cover.
 
 pub const BLOCK_SYMBOLS: [(char, u128); 32] = [
     ('▀', 0x3fffffff000000000),
@@ -36,72 +36,47 @@ pub const BLOCK_SYMBOLS: [(char, u128); 32] = [
     ('▟', 0x071c71c7fffffffff),
 ];
 
-// Extract exact rectangles from the embedded masks once, at compile time.
-// First try one bounding rectangle; otherwise try a rectangle containing the
-// first set pixel, requiring the remaining pixels to form one more rectangle.
+// The same greedy, non-overlapping cover for every block, evaluated at compile
+// time. A count-only pass sizes the packed table; the second pass fills it.
 #[cfg(feature = "raster")]
-pub(crate) const fn rasterize() -> [Option<crate::raster::BlockGlyph>; 32] {
-    use crate::raster::{BlockGlyph, Quad};
-    let mut glyphs = [None; 32];
+pub(crate) const fn rasterize<const N: usize>() -> crate::raster::BlockRaster<N> {
+    use crate::raster::{BlockRaster, Quad};
+    let empty = Quad { top_left: [0, 0], bottom_right: [0, 0] };
+    let mut data = BlockRaster { quads: [empty; N], offsets: [0; 33] };
+    let mut count = 0;
     let mut i = 0;
     while i < BLOCK_SYMBOLS.len() {
-        if i >= 17 && i <= 19 {
-            i += 1;
-            continue;
-        }
-        let pixels = BLOCK_SYMBOLS[i].1;
-        let bounds = bounding_quad(pixels);
-        let mut glyph = BlockGlyph::EMPTY;
-        if quad_pixels(bounds) == pixels {
-            glyph.quads[0] = bounds;
-            glyph.len = 1;
-        } else {
+        let mut pixels = BLOCK_SYMBOLS[i].1;
+        while pixels != 0 {
             let mut first = 0;
             while pixels & (1u128 << (65 - first)) == 0 { first += 1; }
             let left = (first % 6) as u8;
             let top = (first / 6) as u8;
+            let mut best = Quad { top_left: [left, top], bottom_right: [left + 1, top + 1] };
+            let mut best_area = 1;
             let mut bottom = top + 1;
-            while bottom <= 11 && glyph.len == 0 {
+            while bottom <= 11 {
                 let mut right = left + 1;
-                while right <= 6 && glyph.len == 0 {
+                while right <= 6 {
                     let quad = Quad { top_left: [left, top], bottom_right: [right, bottom] };
                     let covered = quad_pixels(quad);
-                    if covered & pixels == covered {
-                        let remainder = pixels ^ covered;
-                        let second = bounding_quad(remainder);
-                        if quad_pixels(second) == remainder {
-                            glyph.quads = [quad, second];
-                            glyph.len = 2;
-                        }
+                    let area = (right - left) * (bottom - top);
+                    if covered & pixels == covered && area > best_area {
+                        best = quad;
+                        best_area = area;
                     }
                     right += 1;
                 }
                 bottom += 1;
             }
-            assert!(glyph.len == 2, "solid Block Element needs more than two quads");
+            if N != 0 { data.quads[count] = best; }
+            count += 1;
+            pixels ^= quad_pixels(best);
         }
-        glyphs[i] = Some(glyph);
+        data.offsets[i + 1] = count as u16;
         i += 1;
     }
-    glyphs
-}
-
-#[cfg(feature = "raster")]
-const fn bounding_quad(pixels: u128) -> crate::raster::Quad {
-    let mut quad = crate::raster::Quad { top_left: [6, 11], bottom_right: [0, 0] };
-    let mut bit = 0;
-    while bit < 66 {
-        if pixels & (1u128 << (65 - bit)) != 0 {
-            let x = (bit % 6) as u8;
-            let y = (bit / 6) as u8;
-            if x < quad.top_left[0] { quad.top_left[0] = x; }
-            if y < quad.top_left[1] { quad.top_left[1] = y; }
-            if x + 1 > quad.bottom_right[0] { quad.bottom_right[0] = x + 1; }
-            if y + 1 > quad.bottom_right[1] { quad.bottom_right[1] = y + 1; }
-        }
-        bit += 1;
-    }
-    quad
+    data
 }
 
 #[cfg(feature = "raster")]
