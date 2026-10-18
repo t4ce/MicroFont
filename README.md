@@ -27,14 +27,20 @@ by one shared cover algorithm. All 32 characters share a packed array of 104
 quads and 33 offsets (482 bytes total); no per-glyph padding or shade-specific
 lookup is needed. Pixel masks remain unchanged.
 
-`BOX_DRAW_SYMBOLS` is a separate 121-character draft table for straight Box
+`BOX_DRAW_SYMBOLS` is a complete 128-character draft table for Box
 Drawing glyphs in a 6×11 cell. It draws on 37 existing masks and drafts the
 missing 84 variants. Double vertical rails use columns 1 and 4, with matching
-corner/junction connections. Curves `╭╮╯╰` and diagonals `╱╲╳` are excluded. With `raster`,
-`BOX_DRAW_QUADS` and `boxdraw_quad_slice` use the same exact cover algorithm as
-blocks: 350 packed quads plus offsets (1,644 bytes). Some junctions exceed four
-quads; the existing double cross `╬` needs eight. Four separated horizontal
-dashes cannot fit in six columns, so those drafts are approximations.
+corner/junction connections. Heavy vertical strokes are two columns wide
+(columns 2 and 3); heavy horizontal strokes remain three rows high. Only curves `╭╮╯╰` remain pixel-only; their raster lookup returns `None`.
+With `raster`, `BOX_DRAW_QUADS` and `boxdraw_quad_slice` provide 346 four-corner
+quads for the other 124 characters. The 121 straight glyphs use the same exact
+rectangle cover as blocks. Diagonals use continuous slanted geometry: one quad
+for `╱`, one for `╲`, and three non-overlapping quads for their union `╳`.
+`BoxDrawQuad::vertices` contains four perimeter-ordered `[f32; 2]` corners in
+6×11 source units, ready to split into two triangles. Raw diagonal hex masks
+retain their staircase pixels. The four rounded corners are the only masks
+without raster data. Four separated horizontal dashes cannot fit in six
+columns, so those drafts are approximations.
 This table is not connected to `glyph_cell_pixels`, stamping, or a renderer.
 
 

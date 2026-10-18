@@ -1,4 +1,4 @@
-//! Small glyphs expressed as axis-aligned quads in the 6×11 source cell.
+//! Small glyphs expressed as quads in the 6×11 source cell.
 //! Coordinates start at the top left; right and bottom edges are exclusive.
 
 /// A filled rectangle in source-cell units, before renderer scaling.
@@ -6,6 +6,24 @@
 pub struct Quad {
     pub top_left: [u8; 2],
     pub bottom_right: [u8; 2],
+}
+
+/// Four corners in perimeter order, in source-cell units. A renderer can split
+/// these convex quads into triangles (0, 1, 2) and (0, 2, 3).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BoxDrawQuad {
+    pub vertices: [[f32; 2]; 4],
+}
+
+impl BoxDrawQuad {
+    const fn rectangle(quad: Quad) -> Self {
+        let [left, top] = quad.top_left;
+        let [right, bottom] = quad.bottom_right;
+        Self { vertices: [
+            [left as f32, top as f32], [right as f32, top as f32],
+            [right as f32, bottom as f32], [left as f32, bottom as f32],
+        ] }
+    }
 }
 
 /// Precomputed quads for one glyph. Unused array slots are private.
@@ -49,13 +67,13 @@ pub fn braille_quads(character: char) -> Option<impl Iterator<Item = Quad>> {
 
 /// Packed rectangles and glyph boundaries in their source table order.
 /// Glyph `i` uses `quads[offsets[i]..offsets[i + 1]]`.
-pub struct QuadRaster<const N: usize, const O: usize> {
-    pub quads: [Quad; N],
+pub struct QuadRaster<const N: usize, const O: usize, Q = Quad> {
+    pub quads: [Q; N],
     pub offsets: [u16; O],
 }
 
 pub type BlockRaster<const N: usize> = QuadRaster<N, 33>;
-pub type BoxDrawRaster<const N: usize> = QuadRaster<N, 122>;
+pub type BoxDrawRaster<const N: usize> = QuadRaster<N, 129, BoxDrawQuad>;
 
 /// Number of rectangles in the exact packed cover of all 32 block masks.
 pub const BLOCK_QUAD_COUNT: usize = rasterize::<0, 33>(&crate::BLOCK_SYMBOLS).offsets[32] as usize;
@@ -78,17 +96,46 @@ pub fn block_quads(character: char) -> Option<impl Iterator<Item = Quad>> {
     Some(block_quad_slice(character)?.iter().copied())
 }
 
-/// Packed cover of the 121 straight Box Drawing drafts, with the same algorithm
-/// as Block Elements. Kept separate from the active glyph lookup and renderer.
-pub const BOX_DRAW_QUAD_COUNT: usize = rasterize::<0, 122>(&crate::BOX_DRAW_SYMBOLS).offsets[121] as usize;
-pub static BOX_DRAW_QUADS: BoxDrawRaster<BOX_DRAW_QUAD_COUNT> = rasterize(&crate::BOX_DRAW_SYMBOLS);
+const BOX_DRAW_RECTANGLE_COUNT: usize = rasterize::<0, 129>(&crate::boxdraw::RASTER_SYMBOLS).offsets[128] as usize;
+const BOX_DRAW_RECTANGLES: QuadRaster<BOX_DRAW_RECTANGLE_COUNT, 129> = rasterize(&crate::boxdraw::RASTER_SYMBOLS);
 
-/// Draft quad data only; excluded curves/diagonals and non-box characters return `None`.
-pub fn boxdraw_quad_slice(character: char) -> Option<&'static [Quad]> {
+/// Exact rectangles for 121 straight glyphs plus five continuous diagonal
+/// quads. Kept separate from the active glyph lookup and renderer.
+pub const BOX_DRAW_QUAD_COUNT: usize = BOX_DRAW_RECTANGLE_COUNT + 5;
+pub static BOX_DRAW_QUADS: BoxDrawRaster<BOX_DRAW_QUAD_COUNT> = boxdraw_rasterize();
+
+/// Draft quad data only; rounded corners and non-box characters return `None`.
+/// Diagonals are continuous ribbons rather than staircase pixel rectangles.
+pub fn boxdraw_quad_slice(character: char) -> Option<&'static [BoxDrawQuad]> {
     let index = crate::BOX_DRAW_SYMBOLS.binary_search_by_key(&character, |&(ch, _)| ch).ok()?;
-    Some(&BOX_DRAW_QUADS.quads[
-        BOX_DRAW_QUADS.offsets[index] as usize..BOX_DRAW_QUADS.offsets[index + 1] as usize
-    ])
+    let start = BOX_DRAW_QUADS.offsets[index] as usize;
+    let end = BOX_DRAW_QUADS.offsets[index + 1] as usize;
+    (start != end).then_some(&BOX_DRAW_QUADS.quads[start..end])
+}
+
+const fn boxdraw_rasterize() -> BoxDrawRaster<BOX_DRAW_QUAD_COUNT> {
+    let empty = BoxDrawQuad { vertices: [[0.0; 2]; 4] };
+    let mut data = BoxDrawRaster { quads: [empty; BOX_DRAW_QUAD_COUNT], offsets: [0; 129] };
+    let mut count = 0;
+    let mut i = 0;
+    while i < crate::BOX_DRAW_SYMBOLS.len() {
+        let manual = crate::boxdraw::diagonal_quads(crate::BOX_DRAW_SYMBOLS[i].0);
+        let mut j = 0;
+        while j < manual.len() {
+            data.quads[count] = manual[j];
+            count += 1;
+            j += 1;
+        }
+        let mut j = BOX_DRAW_RECTANGLES.offsets[i] as usize;
+        while j < BOX_DRAW_RECTANGLES.offsets[i + 1] as usize {
+            data.quads[count] = BoxDrawQuad::rectangle(BOX_DRAW_RECTANGLES.quads[j]);
+            count += 1;
+            j += 1;
+        }
+        data.offsets[i + 1] = count as u16;
+        i += 1;
+    }
+    data
 }
 
 // Shared exact rectangle cover, evaluated at compile time. A count-only pass
