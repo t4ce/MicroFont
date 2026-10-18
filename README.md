@@ -9,7 +9,10 @@ It exposes the packed font table, direct byte/text stamping helpers, and ARGB he
 The default `stamp` feature enables all buffer stamping helpers. Use
 `default-features = false` for pixel data and lookup APIs alone. The independent
 `raster` feature adds `raster::BRAILLE_QUADS`, `braille_quad_slice` and
-`braille_quads`; it does not require `stamp`. For example:
+`braille_quads`; it does not require `stamp`. The independent, non-default
+`han` feature includes the Chinese GUI subset, its tables and accessors.
+Without `han`, those tables and lookup code are excluded and unsupported Han
+characters use the usual `?` fallback. For example:
 
 ```toml
 microfont = { version = "3.9.9", default-features = false, features = ["raster"] }
@@ -22,12 +25,21 @@ does not guarantee that the hardware CPU cache contains the data.
 
 `BASIC_SYMBOLS` owns the existing single-cell Basic Latin masks in codepoint
 order. `CONTROL_SYMBOLS` holds ready-made two- or three-cell representations
-for U+0000–U+0020 (`NUL`, `BS`, `SP`, etc.), assembled at compile time from the
+for U+0000–U+0020 and U+007F (`NUL`, `BS`, `SP`, `DEL`, etc.), assembled at compile time from the
 existing capital-letter and digit masks. `special_cells`, `measure_text` and
 Unicode stamping expand them just like the keyboard/map icons. Space displays
 `SP` in two cells. `control_label_cells` exposes their precomputed mask slices.
-Single-cell/raw byte masks retain their existing layout; DEL stays blank.
+Single-cell/raw byte masks retain their existing layout; Unicode DEL expands
+to the three-cell `DEL` label.
 Basic Latin has no quad raster data yet.
+
+With `raster`, `basic_seed` selects the common reconstruction input before any
+Dista/Convo or Meso/Lean choice. `BASIC_RASTER_OVERRIDES` currently contains only
+`/`: five collinear sites instead of the bitmap's nine staircase sites, tagged
+`long_reach`. Its full-cell mask is `0x2004008010020000`. Short reach is 1.76;
+long reach is 2.76. All other Basic Latin seeds use their existing masks and
+short reach. This is seed data for future triangle reconstruction, not quad
+geometry, and the original bitmap masks remain unchanged.
 
 `BLOCK_SYMBOLS` lists all 32 Block Elements as visible characters beside embedded
 hex masks. With `raster`, `BLOCK_QUADS`, `block_quad_slice` and `block_quads`
@@ -52,9 +64,11 @@ without raster data. Four separated horizontal dashes cannot fit in six
 columns, so those drafts are approximations.
 `glyph_cell_pixels` and Unicode stamping use these canonical masks directly.
 The legacy CP850 `FPIXELS` view is assembled at compile time from the same box
-and block tables, `BASIC_SYMBOLS`, and the remaining 100 extended core masks. Its 224 byte slots and fast
-lookup remain intact; there are no separate hand-maintained symbol masks in
-`ui_symbols.rs` or the core array.
+and block tables, `BASIC_SYMBOLS`, and the remaining 100 extended masks in
+`CORE_SYMBOLS`. Each core entry pairs a visible character with its mask; its
+position in that table does not determine its byte slot. The 224 byte slots
+and fast lookup remain intact. The remaining UI symbol masks live directly
+in `lib.rs`.
 
 
 Text helpers accept Unicode and select the existing CP850 atlas glyphs, including
@@ -72,7 +86,7 @@ at bit 65. The legacy `glyph_pixels` mask uses bit 63 and omits the final two
 pixels. Byte/ARGB slot identities remain unchanged, with their box and block
 masks now derived from the canonical tables.
 
-Unicode text includes **MicroFont GUI Han**, a curated 512-character Chinese GUI
+With the `han` feature, Unicode text includes **MicroFont GUI Han**, a curated 512-character Chinese GUI
 subset: 308 Han characters for menus, file actions, settings and error messages,
 19 punctuation marks, and 185 common-character fillers. Each occupies exactly
 one 6×11 cell, preserving the source pixels. Its packed lookup and glyph tables
@@ -107,4 +121,4 @@ Regenerate the README atlas with `cargo run --example readme_previews`; convert
 Unicode text also includes 55 TermDir UI symbols: border joins, rounded corners,
 arrows, menu markers, segmented digits, and file/action icons. Each occupies one
 6×11 cell, including the fullwidth code points and emoji; raw byte atlas APIs
-retain their existing mappings. The glyph masks are in `src/ui_symbols.rs`.
+retain their existing mappings. The glyph masks are in the `UI_SYMBOLS` table in `src/lib.rs`.

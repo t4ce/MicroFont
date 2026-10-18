@@ -136,16 +136,25 @@ pub const BASIC_SYMBOLS: [(char, u128); 128] = [
     ('\u{7f}', 0), // DEL
 ];
 
-const CONTROL_NAMES: [&str; 33] = [
+/// Raster-only seed edits, shared by Dista/Convo and Meso/Lean alike.
+/// `/` removes the four staircase sites: five collinear sites remain at
+/// (4,0), (3,2), (2,4), (1,6), (0,8), connected with long reach.
+/// These are reconstruction inputs, not replacement bitmap glyphs or quads.
+#[cfg(feature = "raster")]
+pub const BASIC_RASTER_OVERRIDES: [(char, crate::raster::GlyphSeed); 1] = [
+    ('/', crate::raster::GlyphSeed { pixels: 0x2004008010020000, long_reach: true }),
+];
+
+const CONTROL_NAMES: [&str; 34] = [
     "NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
     "BS", "HT", "LF", "VT", "FF", "CR", "SO", "SI",
     "DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB",
-    "CAN", "EM", "SUB", "ESC", "FS", "GS", "RS", "US", "SP",
+    "CAN", "EM", "SUB", "ESC", "FS", "GS", "RS", "US", "SP", "DEL",
 ];
 
 struct ControlData {
-    characters: [[char; 3]; 33],
-    pixels: [[u128; 3]; 33],
+    characters: [[char; 3]; 34],
+    pixels: [[u128; 3]; 34],
 }
 
 // Already in the program image: no allocation, lazy initialization or warming
@@ -153,7 +162,7 @@ struct ControlData {
 static CONTROL_DATA: ControlData = prepare_controls();
 
 const fn prepare_controls() -> ControlData {
-    let mut data = ControlData { characters: [['\0'; 3]; 33], pixels: [[0; 3]; 33] };
+    let mut data = ControlData { characters: [['\0'; 3]; 34], pixels: [[0; 3]; 34] };
     let mut i = 0;
     while i < CONTROL_NAMES.len() {
         let name = CONTROL_NAMES[i].as_bytes();
@@ -169,12 +178,12 @@ const fn prepare_controls() -> ControlData {
 }
 
 /// Ready-to-use control labels, in the same multi-cell mask format as `SPECIAL`.
-/// Entries cover U+0000–U+0020, including the two-cell `SP` representation.
-pub static CONTROL_SYMBOLS: [(char, &'static [u128]); 33] = {
-    let mut symbols: [(char, &'static [u128]); 33] = [('\0', &[]); 33];
+/// Entries cover U+0000–U+0020 and U+007F (`DEL`), including `SP` for space.
+pub static CONTROL_SYMBOLS: [(char, &'static [u128]); 34] = {
+    let mut symbols: [(char, &'static [u128]); 34] = [('\0', &[]); 34];
     let mut i = 0;
     while i < symbols.len() {
-        symbols[i] = ((i as u8) as char, CONTROL_DATA.pixels[i].split_at(CONTROL_NAMES[i].len()).0);
+        symbols[i] = (if i == 33 { '\u{7f}' } else { (i as u8) as char }, CONTROL_DATA.pixels[i].split_at(CONTROL_NAMES[i].len()).0);
         i += 1;
     }
     symbols
@@ -182,12 +191,19 @@ pub static CONTROL_SYMBOLS: [(char, &'static [u128]); 33] = {
 
 /// Explicit control-label mask lookup, including the two-cell `SP` label.
 pub fn control_label_cells(character: char) -> Option<&'static [u128]> {
-    CONTROL_SYMBOLS.get(character as usize).map(|&(_, cells)| cells)
+    Some(CONTROL_SYMBOLS[control_index(character)?].1)
+}
+
+fn control_index(character: char) -> Option<usize> {
+    match character {
+        '\u{00}'..=' ' => Some(character as usize),
+        '\u{7f}' => Some(33),
+        _ => None,
+    }
 }
 
 pub(crate) fn control_characters(character: char) -> Option<&'static [char]> {
-    let index = character as usize;
-    if index > 32 { return None; }
+    let index = control_index(character)?;
     Some(CONTROL_DATA.characters[index].split_at(CONTROL_NAMES[index].len()).0)
 }
 
@@ -198,7 +214,7 @@ mod tests {
     #[test]
     fn control_composites_are_ready_and_use_existing_basic_masks() {
         for (index, &(ch, cells)) in CONTROL_SYMBOLS.iter().enumerate() {
-            assert_eq!(ch as usize, index);
+            assert_eq!(ch as usize, if index == 33 { 0x7f } else { index });
             let name = CONTROL_NAMES[index];
             assert_eq!(cells.len(), name.len());
             assert!((2..=3).contains(&cells.len()));
@@ -211,6 +227,9 @@ mod tests {
         assert_eq!(crate::special_cells(' '), Some(&['S', 'P'][..]));
         assert_eq!(crate::measure_text(" "), (12, 11));
         assert_eq!(crate::glyph_cell_pixels(' '), 0);
+        assert_eq!(control_label_cells('\u{7f}').unwrap().len(), 3);
+        assert_eq!(crate::special_cells('\u{7f}'), Some(&['D', 'E', 'L'][..]));
+        assert_eq!(crate::measure_text("\u{7f}"), (18, 11));
         assert!(control_label_cells('A').is_none());
     }
 
@@ -225,5 +244,10 @@ mod tests {
         assert_eq!(crate::measure_text("\0\x08\t"), (42, 11));
         assert_eq!(crate::measure_text("⌨🗺"), (30, 11));
         assert_eq!(crate::measure_bytes(b"\0\x08\t"), (18, 11));
+        actual.fill(0);
+        expected.fill(0);
+        crate::stamp_text(&mut actual, 18, 11, 0, 0, "\u{7f}", 1).unwrap();
+        crate::stamp_text(&mut expected, 18, 11, 0, 0, "DEL", 1).unwrap();
+        assert_eq!(actual, expected);
     }
 }

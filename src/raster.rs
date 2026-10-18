@@ -1,5 +1,38 @@
-//! Small glyphs expressed as quads in the 6×11 source cell.
+//! Raster seeds and small-glyph quads in the 6×11 source cell.
 //! Coordinates start at the top left; right and bottom edges are exclusive.
+
+pub use crate::basic::BASIC_RASTER_OVERRIDES;
+
+pub const SHORT_CONNECTION_REACH: f64 = 1.76;
+pub const LONG_CONNECTION_REACH: f64 = 2.76;
+
+/// Input to reconstruction, before selecting font family or Meso/Lean shape.
+/// `pixels` uses the full 66-bit cell; `long_reach` belongs to this seed alone.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct GlyphSeed {
+    pub pixels: u128,
+    pub long_reach: bool,
+}
+
+impl GlyphSeed {
+    pub const fn connection_reach(self) -> f64 {
+        if self.long_reach { LONG_CONNECTION_REACH } else { SHORT_CONNECTION_REACH }
+    }
+}
+
+/// Select the shared Basic Latin raster seed. The bitmap table stays unchanged;
+/// only reconstruction sees these edits. This does not generate quad geometry.
+pub const fn basic_seed(character: char) -> Option<GlyphSeed> {
+    if character as u32 > 0x7f { return None; }
+    let mut i = 0;
+    while i < BASIC_RASTER_OVERRIDES.len() {
+        if BASIC_RASTER_OVERRIDES[i].0 == character {
+            return Some(BASIC_RASTER_OVERRIDES[i].1);
+        }
+        i += 1;
+    }
+    Some(GlyphSeed { pixels: crate::BASIC_SYMBOLS[character as usize].1, long_reach: false })
+}
 
 /// A filled rectangle in source-cell units, before renderer scaling.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

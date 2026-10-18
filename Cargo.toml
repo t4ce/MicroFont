@@ -28,6 +28,7 @@ include = [
 default = ["stamp"]
 stamp = []
 raster = []
+han = []
 
 [[example]]
 name = "hello_world_bmp"
