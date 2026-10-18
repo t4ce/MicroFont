@@ -7,6 +7,8 @@ mod gui_han;
 mod ui_symbols;
 mod braille;
 mod blocks;
+mod boxdraw;
+pub use boxdraw::BOX_DRAW_SYMBOLS;
 pub use blocks::BLOCK_SYMBOLS;
 #[cfg(feature = "stamp")]
 mod stamp;

@@ -27,6 +27,17 @@ by one shared cover algorithm. All 32 characters share a packed array of 104
 quads and 33 offsets (482 bytes total); no per-glyph padding or shade-specific
 lookup is needed. Pixel masks remain unchanged.
 
+`BOX_DRAW_SYMBOLS` is a separate 121-character draft table for straight Box
+Drawing glyphs in a 6×11 cell. It draws on 37 existing masks and drafts the
+missing 84 variants. Double vertical rails use columns 1 and 4, with matching
+corner/junction connections. Curves `╭╮╯╰` and diagonals `╱╲╳` are excluded. With `raster`,
+`BOX_DRAW_QUADS` and `boxdraw_quad_slice` use the same exact cover algorithm as
+blocks: 350 packed quads plus offsets (1,644 bytes). Some junctions exceed four
+quads; the existing double cross `╬` needs eight. Four separated horizontal
+dashes cannot fit in six columns, so those drafts are approximations.
+This table is not connected to `glyph_cell_pixels`, stamping, or a renderer.
+
+
 Text helpers accept Unicode and select the existing CP850 atlas glyphs, including
 `§`, accented Latin letters and box drawing characters. Ordinary characters occupy
 one cell; unsupported characters display `?`. Byte and ARGB helpers continue to
