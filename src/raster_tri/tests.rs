@@ -87,3 +87,88 @@ fn reach_shapes_holes_and_detail_change_real_geometry() {
         assert!(dista_triangles(ch, FontShape::Meso, FontDetail::Fine).is_none());
     }
 }
+
+#[test]
+fn braille_keeps_original_cells_and_exact_triangle_budgets() {
+    // Fixed original Microfont centres, in Unicode bit order. They come from
+    // the existing 1x1 pixels, not an evenly redistributed 6x11 dot grid.
+    let centres = [
+        [1.5, 1.5],
+        [1.5, 3.5],
+        [1.5, 5.5],
+        [4.5, 1.5],
+        [4.5, 3.5],
+        [4.5, 5.5],
+        [1.5, 7.5],
+        [4.5, 7.5],
+    ];
+    for pattern in 0u32..256 {
+        let ch = char::from_u32(0x2800 + pattern).unwrap();
+        let dots = pattern.count_ones() as usize;
+        let mut expected_pixels = 0u128;
+        for (bit, &[x, y]) in centres.iter().enumerate() {
+            if pattern & (1 << bit) != 0 {
+                expected_pixels |= 1u128 << (65 - (y as usize * 6 + x as usize));
+            }
+        }
+        assert_eq!(crate::glyph_cell_pixels(ch), expected_pixels);
+        for shape in [FontShape::Meso, FontShape::Lean] {
+            for (detail, triangles_per_dot) in [(FontDetail::Fine, 36), (FontDetail::High, 72)] {
+                let mesh = dista_braille_triangles(ch, shape, detail).unwrap();
+                assert_eq!(mesh.indices.len(), dots * triangles_per_dot * 3);
+                assert_eq!(mesh.vertices.len(), dots * (triangles_per_dot + 1));
+                let mut dot_index = 0;
+                for (bit, &centre) in centres.iter().enumerate() {
+                    if pattern & (1 << bit) == 0 {
+                        continue;
+                    }
+                    let start = dot_index * (triangles_per_dot + 1);
+                    assert_eq!(mesh.vertices[start], centre);
+                    for &p in &mesh.vertices[start + 1..start + 1 + triangles_per_dot] {
+                        assert!((p[0] - centre[0]).abs() < 0.5);
+                        assert!((p[1] - centre[1]).abs() < 0.5);
+                        let r2 = distance_squared(p.map(f64::from), centre.map(f64::from));
+                        let level = libm::exp(-r2 / (2.0 * SIGMA * SIGMA));
+                        assert!(
+                            (level - shape.body_threshold()).abs() < 2e-6,
+                            "dot weight differs from Dista's point envelope"
+                        );
+                    }
+                    dot_index += 1;
+                }
+                let (bodies, holes, area) = topology(&mesh);
+                assert_eq!((bodies, holes), (dots, 0));
+                if dots != 0 {
+                    let expected_area = dots as f64
+                        * core::f64::consts::PI
+                        * SIGMA
+                        * SIGMA
+                        * -2.0
+                        * libm::log(shape.body_threshold());
+                    let tolerance = if detail == FontDetail::Fine {
+                        0.006
+                    } else {
+                        0.0015
+                    };
+                    assert!((area / expected_area - 1.0).abs() < tolerance);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn braille_dispatches_to_direct_circles_and_meso_is_larger() {
+    for shape in [FontShape::Meso, FontShape::Lean] {
+        for detail in [FontDetail::Fine, FontDetail::High] {
+            let direct = dista_braille_triangles('⣿', shape, detail).unwrap();
+            let routed = dista_triangles('⣿', shape, detail).unwrap();
+            assert_eq!(direct.vertices, routed.vertices);
+            assert_eq!(direct.indices, routed.indices);
+        }
+    }
+    let meso = dista_braille_triangles('⠁', FontShape::Meso, FontDetail::Fine).unwrap();
+    let lean = dista_braille_triangles('⠁', FontShape::Lean, FontDetail::Fine).unwrap();
+    assert!(meso.vertices[1][0] > lean.vertices[1][0]);
+    assert!(dista_braille_triangles('A', FontShape::Meso, FontDetail::Fine).is_none());
+}

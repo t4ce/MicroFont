@@ -40,7 +40,7 @@ Per-glyph seed/reach overrides are independent of these settings.
 `FontDetail` selects triangle tessellation independently of shape:
 `Fine = 0` (the default) uses 12 subdivisions per source-cell unit, and `High = 1`
 uses 24, matching the HTML presets. `FontDetail::from_level` accepts a 0/1 setting;
-`subdivisions_per_cell()` sets the triangle builder's geometry resolution.
+`subdivisions_per_cell()` sets the Basic Latin triangle builder's geometry resolution.
 The existing pixel and quad data are unaffected.
 
 
@@ -55,12 +55,23 @@ use their existing masks and short reach. The original bitmap masks remain uncha
 `raster_tri::dista_triangles(character, shape, detail)` constructs the rounded
 distance envelope on the CPU and returns an allocated `TriangleMesh` containing
 source-space vertices and triangle-list indices. It accepts single printable
-Basic Latin glyphs (`!` through `~`); controls, `SP`, `DEL` and other Unicode
-characters return `None`. Dista uses
+Basic Latin glyphs (`!` through `~`) and all Braille patterns; controls, `SP`,
+`DEL` and other Unicode characters return `None`. Basic Latin uses
 neutral connections, closed-disc shortcut pruning, compact Gaussian support,
 adaptive interior merging and welded, stitched boundary triangles, following
 the HTML field construction. Detail changes actual mesh geometry. The
 sampling/triangulation machinery lives in `src/raster_tri/mesh.rs`.
+
+Braille takes the direct `raster_tri::dista_braille_triangles` route, which is
+also selected by `dista_triangles`. Each lit dot is a circle fan centred on its
+original Microfont pixel cell: `(1.5, 1.5)`, `(1.5, 3.5)`, `(1.5, 5.5)`,
+`(4.5, 1.5)`, `(4.5, 3.5)`, `(4.5, 5.5)`, `(1.5, 7.5)`, `(4.5, 7.5)` in
+Unicode dot order. Diameter is derived from the same Dista influence width and
+body threshold: approximately 0.696 source units for Meso and 0.385 for Lean.
+`FontDetail::braille_triangles_per_dot()` gives 36 for Fine and 72 for High;
+all eight dots therefore use at most 288 or 576 triangles. Blank Braille has
+no triangles. Braille uses no field sampling or link reconstruction, and its
+existing raw pixels and square-dot quad data remain available.
 
 `BLOCK_SYMBOLS` lists all 32 Block Elements as visible characters beside embedded
 hex masks. With `raster`, `BLOCK_QUADS`, `block_quad_slice` and `block_quads`

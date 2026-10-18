@@ -25,4 +25,12 @@ impl FontDetail {
             Self::High => 24,
         }
     }
+
+    /// Direct circle-fan budget for each lit Braille dot.
+    pub const fn braille_triangles_per_dot(self) -> usize {
+        match self {
+            Self::Fine => 36,
+            Self::High => 72,
+        }
+    }
 }

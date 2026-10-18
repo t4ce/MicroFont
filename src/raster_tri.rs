@@ -1,5 +1,6 @@
-//! CPU reconstruction of single-cell Basic Latin into indexed triangles.
+//! Dista triangles for single-cell Basic Latin and Braille.
 //! Dista uses a rounded distance envelope around sites and straight links.
+//! Braille dots use direct circle fans at their original Microfont positions.
 //! No bitmap quads, font textures, or GPU field evaluation are used here.
 
 use crate::{
@@ -21,13 +22,16 @@ pub struct TriangleMesh {
     pub indices: Vec<u32>,
 }
 
-/// Dista: a rounded union of point and segment distance envelopes.
-/// Control labels (including SP and DEL) and non-Basic characters return None.
+/// Dista: Basic Latin distance envelopes or direct Braille dot circles.
+/// Control labels (including SP and DEL) and other characters return None.
 pub fn dista_triangles(
     character: char,
     shape: FontShape,
     detail: FontDetail,
 ) -> Option<TriangleMesh> {
+    if ('\u{2800}'..='\u{28ff}').contains(&character) {
+        return dista_braille_triangles(character, shape, detail);
+    }
     let Skeleton { sites, links } = basic_skeleton(character)?;
     let mut field = Field::new(detail);
     // Dista is the nearest union: points and complete straight links.
@@ -57,6 +61,55 @@ pub fn dista_triangles(
         );
     }
     Some(field.triangulate(shape.body_threshold()))
+}
+
+/// Braille as independent circle fans, sharing the existing pixel/quad centres.
+/// Fine uses 36 triangles per lit dot; High uses 72. Blank Braille is empty;
+/// other characters return None. Dot size follows Dista Meso/Lean exactly.
+pub fn dista_braille_triangles(
+    character: char,
+    shape: FontShape,
+    detail: FontDetail,
+) -> Option<TriangleMesh> {
+    let dots = crate::raster::braille_quad_slice(character)?;
+    if dots.is_empty() {
+        return Some(TriangleMesh::default());
+    }
+    // The Dista point envelope is exp(-r² / (2σ²)). Solve at the same body
+    // threshold to get its radius directly, without sampling a field or mesh.
+    let radius = SIGMA * libm::sqrt(-2.0 * libm::log(shape.body_threshold()));
+    let segments = detail.braille_triangles_per_dot();
+    let ring: Vec<[f32; 2]> = (0..segments)
+        .map(|i| {
+            let angle = core::f64::consts::TAU * i as f64 / segments as f64;
+            [
+                (radius * libm::cos(angle)) as f32,
+                (radius * libm::sin(angle)) as f32,
+            ]
+        })
+        .collect();
+    let mut mesh = TriangleMesh {
+        vertices: Vec::with_capacity(dots.len() * (segments + 1)),
+        indices: Vec::with_capacity(dots.len() * segments * 3),
+    };
+    for dot in dots {
+        let center = [
+            (f32::from(dot.top_left[0]) + f32::from(dot.bottom_right[0])) * 0.5,
+            (f32::from(dot.top_left[1]) + f32::from(dot.bottom_right[1])) * 0.5,
+        ];
+        let base = mesh.vertices.len() as u32;
+        mesh.vertices.push(center);
+        mesh.vertices
+            .extend(ring.iter().map(|&[x, y]| [center[0] + x, center[1] + y]));
+        for i in 0..segments {
+            mesh.indices.extend_from_slice(&[
+                base,
+                base + 1 + i as u32,
+                base + 1 + ((i + 1) % segments) as u32,
+            ]);
+        }
+    }
+    Some(mesh)
 }
 
 // The remaining recipe is shared and neutral: shortcut pruning is enabled;
