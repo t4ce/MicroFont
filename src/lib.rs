@@ -3,6 +3,8 @@
 #[cfg(test)]
 extern crate std;
 
+mod basic;
+pub use basic::{BASIC_SYMBOLS, CONTROL_SYMBOLS, control_label_cells};
 mod gui_han;
 mod ui_symbols;
 mod braille;
@@ -32,6 +34,9 @@ pub const FLIPY: u8 = 4;
 const fn z(bits: u64, shift: u32) -> u64 {
     bits << shift
 }
+const fn z128(bits: u128, shift: u32) -> u128 {
+    bits << shift
+}
 
 /// Icons composed of consecutive 6x11 cell masks (top-left at bit 65).
 pub const SPECIAL: [(char, &'static [u128]); 2] = [
@@ -39,113 +44,18 @@ pub const SPECIAL: [(char, &'static [u128]); 2] = [
     ('\u{1F5FA}', &[0x1F82FFAE8E186189F, 0x1F826BC70C78E289F, 0x1E87DF7DE51BED85E]),
 ];
 
-/// Internal cell characters used by fixed-cell terminal renderers: keyboard
-/// left/right, then the map's three cells, all in left-to-right order.
+/// Multi-cell expansion: private cells for keyboard/map, existing Basic Latin
+/// letters for control names, including `SP` for spaces.
 pub fn special_cells(character: char) -> Option<&'static [char]> {
     match character {
         '\u{2328}' => Some(&['\u{e000}', '\u{e001}']),
         '\u{1f5fa}' => Some(&['\u{e002}', '\u{e003}', '\u{e004}']),
-        _ => None,
+        _ => basic::control_characters(character),
     }
 }
 
-pub const FPIXELS: [u64; 224] = [
-    0,
-    0x2082082080082000,
-    z(0x5145, 48),
-    0x514F94514F945000,
-    0x21CAA870AA9C2000,
-    0x4AA50421052A9000,
-    0x2145085628A27400,
-    z(0x1041, 49),
-    0x0842082082040800,
-    0x4081041041084000,
-    z(0x54E395, 41),
-    z(0x1047C41, 25),
-    z(0x821, 7),
-    z(0x1F, 35),
-    z(0xC3, 12),
-    0x0821042104208000,
-    0x7228A28A28A27000,
-    0x0862928820820800,
-    0x722882108420F800,
-    0x7228823028A27000,
-    0x10C51493E1041000,
-    0xFA083C082082F000,
-    0x722820F228A27000,
-    0xF821042084104000,
-    0x7228A27228A27000,
-    0x7228A27820A27000,
-    z(0xC30000C3, 18),
-    0x00030C00030C1080,
-    0x0021084081020000,
-    z(0x1F01F, 29),
-    0x0204081084200000,
-    0x7228842080082000,
-    0x7A1B75D75D6E81E0,
-    0x20851453E8A28800,
-    0xF228A2F228A2F000,
-    0x7228208208227000,
-    0xF228A28A28A2F000,
-    0xFA0820F20820F800,
-    0xFA0820F208208000,
-    0x722820B228A27000,
-    0x8A28A2FA28A28800,
-    0xF88208208208F800,
-    0xF820820820A27000,
-    0x8A4928C289248800,
-    0x820820820820F800,
-    0x8B6DAAAA28A28800,
-    0x8B2CAAAAA9A68800,
-    0xFA28A28A28A2F800,
-    0xF228A2F208208000,
-    0x7228A28A28A46800,
-    0xF228A2F289228800,
-    0x7228207020A27000,
-    0xF882082082082000,
-    0x8A28A28A28A27000,
-    0x8A28A25145082000,
-    0x8A28A28AAA945000,
-    0x8A25142145228800,
-    0x8A25142082082000,
-    0xF82104210420F800,
-    0x3882082082083800,
-    0x8204102041020800,
-    0xE08208208208E000,
-    z(0x4291, 47),
-    z(0x1F, 11),
-    z(0x81, 54),
-    z(0x7027A27, 12),
-    0x820820F228A2F000,
-    z(0xF41040F, 11),
-    0x0820827A28A27800,
-    z(0x722FA07, 12),
-    0x1882087082082000,
-    0x0000007A28A27827,
-    0x820820F228A28800,
-    0x0002002082082000,
-    0x0002002082082284,
-    0x4104104946144800,
-    0x4104104104103000,
-    z(0x1E555555, 11),
-    z(0x1E451451, 11),
-    z(0x7228A27, 12),
-    0x0000007124927104,
-    0x0000007249247041,
-    z(0x1C49041, 14),
-    z(0x3907827, 12),
-    0x2082087082081800,
-    z(0x1145144F, 11),
-    z(0x45128A1, 13),
-    z(0x8AA7145, 12),
-    z(0x11284291, 11),
-    0x0000008A25142084,
-    z(0x1F08421F, 11),
-    0x0841042041040800,
-    0x2082082082082000,
-    0x8104102104108000,
-    z(0x42A1, 30),
-    0,
+// Extended CP850 masks not owned by basic.rs, boxdraw.rs or blocks.rs, in slot order.
+const CORE_PIXELS: [u64; 100] = [
     0x7228208208227084,
     0x0005008A28A27800,
     0x004200722FA07000,
@@ -194,37 +104,14 @@ pub const FPIXELS: [u64; 224] = [
     0x2080082082082000,
     z(0x94A4489, 22),
     z(0x9122529, 24),
-    0x9004802409004800,
-    0xA95222568095A120,
-    0xA95A95A95A95A950,
-    0x2082082082082082,
-    0x2082082382082082,
     0x108008514FA28800,
     0x214008514FA28800,
     0x408008514FA28800,
     0x01E867A699E17800,
-    0x514514D04D145145,
-    0x5145145145145145,
-    0x000000F04D145145,
-    0x514514D04F000000,
     0x08472AA2A7108000,
     0x8A251421C21C2000,
-    z(0x1C1041041, 1),
-    0x20820820F0000000,
-    0x20820823F0000000,
-    z(0x1F9041041, 1),
-    0x20820820F2082082,
-    z(0x3F, 28),
-    0x20820823F2082082,
     0x42A1007027A27000,
     0x42A108514FA28800,
-    0x5145145D07C00000,
-    0x0000007D05D45145,
-    0x514514DC0FC00000,
-    0x000000FC0DD45145,
-    0x5145145D05D45145,
-    z(0x3F03F, 22),
-    0x514514DC0DD45145,
     0x0227228A27220000,
     0xA10A047228A27000,
     0x712492E924927000,
@@ -235,13 +122,8 @@ pub const FPIXELS: [u64; 224] = [
     0x10803E208208F800,
     0x21403E208208F800,
     0x01403E208208F800,
-    z(0x41041047, 31),
-    z(0x79041041, 1),
-    0xFFFFFFFFFFFFFFF0,
-    z(0x3FFFFFFF, 4),
     0x2082080002082080,
     0x40803E208208F800,
-    z(0x3FFFFFFF, 34),
     0x10803E8A28A2F800,
     0x3124944925104000,
     0x21403E8A28A2F800,
@@ -275,6 +157,30 @@ pub const FPIXELS: [u64; 224] = [
     z(0x3FFFFFFF, 22),
     0,
 ];
+
+/// Legacy CP850 atlas view, assembled at compile time from the canonical masks.
+/// Slots retain their byte identities; the final two pixels of each 6×11 cell
+/// are omitted by this 64-bit compatibility format.
+pub const FPIXELS: [u64; 224] = {
+    let mut pixels = [0; 224];
+    let mut slot = 0;
+    let mut core = 0;
+    while slot < pixels.len() {
+        let character = if slot < 96 { (slot as u8 + 32) as char }
+            else { EXTENDED_CHARS[slot - 96] };
+        pixels[slot] = match symbol_pixels(character) {
+            Some(mask) => (mask >> 2) as u64,
+            None => {
+                let mask = CORE_PIXELS[core];
+                core += 1;
+                mask
+            }
+        };
+        slot += 1;
+    }
+    assert!(core == CORE_PIXELS.len());
+    pixels
+};
 // Atlas slots 0x80..0xFF follow CP850, not Unicode/Latin-1.
 // https://www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/PC/CP850.TXT
 const EXTENDED_CHARS: [char; 128] = [
@@ -310,14 +216,28 @@ pub fn glyph_character(byte: u8) -> Option<char> {
         _ => None,
     }
 }
+// Canonical complete-cell symbols, shared by Unicode lookup and the CP850 view.
+const fn symbol_pixels(character: char) -> Option<u128> {
+    let code = character as u32;
+    if code <= 0x7f {
+        Some(BASIC_SYMBOLS[code as usize].1)
+    } else if code >= 0x2500 && code <= 0x257f {
+        Some(BOX_DRAW_SYMBOLS[(code - 0x2500) as usize].1)
+    } else if code >= 0x2580 && code <= 0x259f {
+        Some(BLOCK_SYMBOLS[(code - 0x2580) as usize].1)
+    } else {
+        None
+    }
+}
+
 /// Full 6x11 Unicode cell, with the top-left pixel at bit 65 and bottom-right
-/// at bit 0. Includes Braille, Block Elements, and the one-cell GUI Han subset.
+/// at bit 0. Includes Box Drawing, Braille, Block Elements, and the GUI Han subset.
 pub fn glyph_cell_pixels(character: char) -> u128 {
     if ('\u{e000}'..='\u{e004}').contains(&character) {
         let cell = character as usize - 0xe000;
         if cell < 2 { SPECIAL[0].1[cell] } else { SPECIAL[1].1[cell - 2] }
-    } else if ('\u{2580}'..='\u{259f}').contains(&character) {
-        BLOCK_SYMBOLS[character as usize - 0x2580].1
+    } else if let Some(pixels) = symbol_pixels(character) {
+        pixels
     } else if ('\u{2800}'..='\u{28ff}').contains(&character) {
         (braille::DATA.pixels[character as usize - 0x2800] as u128) << 2
     } else if let Some(pixels) = ui_symbols::glyph_cell_pixels(character) {

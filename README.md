@@ -20,6 +20,15 @@ also prepares every glyph's quads in 6×11 source coordinates. Access borrows
 static data; no runtime warm-up or allocation is required. This precomputation
 does not guarantee that the hardware CPU cache contains the data.
 
+`BASIC_SYMBOLS` owns the existing single-cell Basic Latin masks in codepoint
+order. `CONTROL_SYMBOLS` holds ready-made two- or three-cell representations
+for U+0000–U+0020 (`NUL`, `BS`, `SP`, etc.), assembled at compile time from the
+existing capital-letter and digit masks. `special_cells`, `measure_text` and
+Unicode stamping expand them just like the keyboard/map icons. Space displays
+`SP` in two cells. `control_label_cells` exposes their precomputed mask slices.
+Single-cell/raw byte masks retain their existing layout; DEL stays blank.
+Basic Latin has no quad raster data yet.
+
 `BLOCK_SYMBOLS` lists all 32 Block Elements as visible characters beside embedded
 hex masks. With `raster`, `BLOCK_QUADS`, `block_quad_slice` and `block_quads`
 provide their exact 6×11 rectangles, derived at compile time from those masks
@@ -41,7 +50,11 @@ for `╱`, one for `╲`, and three non-overlapping quads for their union `╳`.
 retain their staircase pixels. The four rounded corners are the only masks
 without raster data. Four separated horizontal dashes cannot fit in six
 columns, so those drafts are approximations.
-This table is not connected to `glyph_cell_pixels`, stamping, or a renderer.
+`glyph_cell_pixels` and Unicode stamping use these canonical masks directly.
+The legacy CP850 `FPIXELS` view is assembled at compile time from the same box
+and block tables, `BASIC_SYMBOLS`, and the remaining 100 extended core masks. Its 224 byte slots and fast
+lookup remain intact; there are no separate hand-maintained symbol masks in
+`ui_symbols.rs` or the core array.
 
 
 Text helpers accept Unicode and select the existing CP850 atlas glyphs, including
@@ -56,7 +69,8 @@ eighth steps share a bitmap because the cell is only six pixels wide. Full
 blocks fill all 66 pixels, so adjacent cells join without gaps.
 `glyph_cell_pixels` exposes the full cell as a `u128` with the top-left pixel
 at bit 65. The legacy `glyph_pixels` mask uses bit 63 and omits the final two
-pixels. Raw byte/ARGB atlas rendering remains unchanged.
+pixels. Byte/ARGB slot identities remain unchanged, with their box and block
+masks now derived from the canonical tables.
 
 Unicode text includes **MicroFont GUI Han**, a curated 512-character Chinese GUI
 subset: 308 Han characters for menus, file actions, settings and error messages,

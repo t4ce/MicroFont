@@ -1,4 +1,5 @@
-//! Compile-time Braille pixels and optional ready-to-use quad data.
+//! all 256 Braille patterns have precomputed raster data: 
+//! one 1×1 quad per lit dot, up to eight quads per glyph.
 use crate::FWIDTH;
 
 // Unicode dot order: left 1/2/3/7, right 4/5/6/8.

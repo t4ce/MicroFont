@@ -1,15 +1,19 @@
-//! Block Elements in Unicode order; full 6×11 masks, top-left at bit 65.
-//! Solid blocks use at most two quads; shades use an exact rectangle cover.
+//! All of These, Raster to just 1 or 2 Quads - and for 66 cells the Cap is that (66)
+//! But the actual cap is 33 because of the enemy == ▒  
+//! So, suddenly there is 33x more work for the renderer but this is such a small sum of quads
+//! overall that any renderer IC will just smile about it anyways
+
+use crate::z128 as z;
 
 pub const BLOCK_SYMBOLS: [(char, u128); 32] = [
-    ('▀', 0x3fffffff000000000),
-    ('▁', 0x0000000000000003f),
-    ('▂', 0x0000000000003ffff),
-    ('▃', 0x00000000000ffffff),
-    ('▄', 0x00000000fffffffff),
-    ('▅', 0x0000003ffffffffff),
-    ('▆', 0x00000ffffffffffff),
-    ('▇', 0x00fffffffffffffff),
+    ('▀', z(0x3fffffff, 36)),
+    ('▁', 0x3f),
+    ('▂', 0x3ffff),
+    ('▃', 0xffffff),
+    ('▄', 0xfffffffff),
+    ('▅', 0x3ffffffffff),
+    ('▆', 0xffffffffffff),
+    ('▇', 0xfffffffffffffff),
     ('█', 0x3ffffffffffffffff),
     ('▉', 0x3efbefbefbefbefbe),
     ('▊', 0x3efbefbefbefbefbe),
@@ -18,20 +22,20 @@ pub const BLOCK_SYMBOLS: [(char, u128); 32] = [
     ('▍', 0x30c30c30c30c30c30),
     ('▎', 0x30c30c30c30c30c30),
     ('▏', 0x20820820820820820),
-    ('▐', 0x071c71c71c71c71c7),
+    ('▐', 0x71c71c71c71c71c7),
     ('░', 0x22222222222222222),
     ('▒', 0x2a56a56a56a56a56a),
     ('▓', 0x1dddddddddddddddd),
-    ('▔', 0x3f000000000000000),
-    ('▕', 0x01041041041041041),
-    ('▖', 0x00000000e38e38e38),
-    ('▗', 0x000000001c71c71c7),
-    ('▘', 0x38e38e38000000000),
+    ('▔', z(0x3f, 60)),
+    ('▕', 0x1041041041041041),
+    ('▖', z(0x1c71c71c7, 3)),
+    ('▗', 0x1c71c71c7),
+    ('▘', z(0x71c71c7, 39)),
     ('▙', 0x38e38e38fffffffff),
     ('▚', 0x38e38e381c71c71c7),
     ('▛', 0x3fffffffe38e38e38),
     ('▜', 0x3fffffff1c71c71c7),
-    ('▝', 0x071c71c7000000000),
-    ('▞', 0x071c71c7e38e38e38),
-    ('▟', 0x071c71c7fffffffff),
+    ('▝', z(0x71c71c7, 36)),
+    ('▞', 0x71c71c7e38e38e38),
+    ('▟', 0x71c71c7fffffffff),
 ];
