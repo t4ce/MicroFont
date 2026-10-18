@@ -11,6 +11,8 @@ mod fontshape;
 pub use fontshape::FontShape;
 mod font;
 pub use font::Font;
+mod fontdetail;
+pub use fontdetail::FontDetail;
 #[cfg(feature = "han")]
 mod gui_han;
 mod braille;

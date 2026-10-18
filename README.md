@@ -32,6 +32,15 @@ Unicode stamping expand them just like the keyboard/map icons. Space displays
 Single-cell/raw byte masks retain their existing layout; Unicode DEL expands
 to the three-cell `DEL` label.
 Basic Latin has no quad raster data yet.
+`FontShape::INFLUENCE_WIDTH` is fixed at 0.20 source units for both shapes and
+both Dista/Convo families. `FontShape::body_threshold()` returns 0.24 for Meso
+and 0.70 for Lean. Per-glyph seed/reach overrides are independent of these settings.
+`FontDetail` selects triangle tessellation independently of family and shape:
+`Fine = 0` (the default) uses 12 subdivisions per source-cell unit, and `High = 1`
+uses 24, matching the HTML presets. `FontDetail::from_level` accepts a 0/1 setting;
+`subdivisions_per_cell()` exposes the geometry resolution for the future triangle
+builder. The existing pixel and quad data are unaffected.
+
 
 With `raster`, `basic_seed` selects the common reconstruction input before any
 Dista/Convo or Meso/Lean choice. `BASIC_RASTER_OVERRIDES` currently contains only
