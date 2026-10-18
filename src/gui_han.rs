@@ -12,6 +12,11 @@ pub const GUI_HAN_COUNT: usize = data::CODES.len();
 pub const GUI_HAN_TABLE_BYTES: usize =
     data::CODES.len() * 2 + data::CHECKPOINTS.len() * 2 + data::DATA.len();
 
+/// Iterate the existing subset without embedding a second codepoint table.
+pub fn characters() -> impl ExactSizeIterator<Item = char> {
+    data::CODES.iter().map(|&cp| char::from_u32(cp as u32).unwrap())
+}
+
 fn read_u16(at: usize) -> usize {
     u16::from_le_bytes([data::DATA[at], data::DATA[at + 1]]) as usize
 }
