@@ -1,7 +1,6 @@
 //! Basic Latin (U+0000–U+007F), copied from the existing font.
 //! Full 6×11 masks, top-left at bit 65. Single-cell control/space/DEL masks are blank;
 //! named control labels are prepared below as two- or three-cell composites.
-//! No quad raster data yet.
 
 use crate::z128 as z;
 
@@ -140,11 +139,17 @@ pub const BASIC_SYMBOLS: [(char, u128); 128] = [
 /// `%` uses 13 sites: two four-site rings and a five-site diagonal, short reach.
 /// `/` removes the four staircase sites: five collinear sites remain at
 /// (4,0), (3,2), (2,4), (1,6), (0,8), connected with long reach.
+/// `A` uses a single apex at (2,1), diagonal shoulders and a full crossbar
+/// at row 5, with short reach.
+/// `y` uses eight sites: (0,4), (4,4), (0,6), (4,6), (1,7), (3,7),
+/// (2,8), (1,10), with long reach across the arm and descender gaps.
 /// These are reconstruction inputs, not replacement bitmap glyphs or quads.
 #[cfg(feature = "raster")]
-pub const BASIC_RASTER_OVERRIDES: [(char, crate::raster::GlyphSeed); 2] = [
+pub const BASIC_RASTER_OVERRIDES: [(char, crate::raster::GlyphSeed); 4] = [
     ('%', crate::raster::GlyphSeed { pixels: 0x10a12108424284000, long_reach: false }),
     ('/', crate::raster::GlyphSeed { pixels: 0x2004008010020000, long_reach: true }),
+    ('A', crate::raster::GlyphSeed { pixels: 0x2148a2fa28a2000, long_reach: false }),
+    ('y', crate::raster::GlyphSeed { pixels: 0x22022508010, long_reach: true }),
 ];
 
 const CONTROL_NAMES: [&str; 34] = [

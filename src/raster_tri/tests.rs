@@ -67,8 +67,28 @@ fn printable_basic_has_closed_triangle_geometry_in_both_shapes() {
 }
 
 #[test]
-fn reach_shapes_holes_and_detail_change_real_geometry() {
+fn sparse_y_seed_matches_edited_pattern_and_stays_connected() {
+    let seed = basic_seed('y').unwrap();
+    let sites: Vec<_> = (0..66)
+        .filter(|&i| seed.pixels & (1u128 << (65 - i)) != 0)
+        .map(|i| (i % 6, i / 6))
+        .collect();
+    assert_eq!(sites, [(0, 4), (4, 4), (0, 6), (4, 6), (1, 7), (3, 7), (2, 8), (1, 10)]);
+    assert!(seed.long_reach);
     for shape in [FontShape::Meso, FontShape::Lean] {
+        let mesh = dista_triangles('y', shape, FontDetail::Fine).unwrap();
+        let (bodies, holes, _) = topology(&mesh);
+        assert_eq!((bodies, holes), (1, 0), "sparse long-reach y must stay connected");
+    }
+}
+
+#[test]
+fn reach_shapes_holes_and_detail_change_real_geometry() {
+    assert!(!basic_seed('A').unwrap().long_reach);
+    for shape in [FontShape::Meso, FontShape::Lean] {
+        let a = dista_triangles('A', shape, FontDetail::Fine).unwrap();
+        let (bodies, holes, _) = topology(&a);
+        assert_eq!((bodies, holes), (1, 1), "edited A must keep its counter and connected strokes");
         let slash = dista_triangles('/', shape, FontDetail::Fine).unwrap();
         let (bodies, holes, _) = topology(&slash);
         assert_eq!((bodies, holes), (1, 0), "sparse long-reach slash must be one ribbon");

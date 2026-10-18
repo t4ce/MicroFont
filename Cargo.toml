@@ -17,6 +17,7 @@ include = [
     "NOTICE-cjk.md",
     "docs/**/*.png",
     "src/**/*.rs",
+    "shaders/**/*.vert",
     "examples/**/*.rs",
     "tools/**/*.py",
     "tools/**/*.txt",

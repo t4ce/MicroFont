@@ -45,11 +45,15 @@ The existing pixel and quad data are unaffected.
 
 
 With `raster`, `basic_seed` selects the common Dista reconstruction input before
-the Meso/Lean choice. `BASIC_RASTER_OVERRIDES` contains `%` and `/`.
+the Meso/Lean choice. `BASIC_RASTER_OVERRIDES` contains `%`, `/`, `A`, and `y`.
 `%` uses 13 sites (two four-site rings and a five-site diagonal), with full-cell
 mask `0x10a12108424284000` and short reach. `/` uses five collinear sites instead
 of the bitmap's nine staircase sites, with mask `0x2004008010020000`, tagged
-`long_reach`. Short reach is 1.76; long reach is 2.76. All other Basic Latin seeds
+`long_reach`. `y` uses eight sites at (0,4), (4,4), (0,6), (4,6), (1,7),
+(3,7), (2,8), and (1,10), with mask `0x22022508010` and long reach to bridge
+the arm and descender gaps. `A` uses a single apex at (2,1), diagonal shoulders,
+and a full crossbar at row 5, with mask `0x2148a2fa28a2000` and short reach.
+Short reach is 1.76; long reach is 2.76. All other Basic Latin seeds
 use their existing masks and short reach. The original bitmap masks remain unchanged.
 
 `raster_tri::dista_triangles(character, shape, detail)` constructs the rounded
