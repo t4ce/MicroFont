@@ -136,8 +136,9 @@ pub const BASIC_SYMBOLS: [(char, u128); 128] = [
 ];
 
 #[cfg(feature = "raster")]
-pub const BASIC_RASTER_OVERRIDES: [(char, crate::raster::GlyphSeed); 7] = [
+pub const BASIC_RASTER_OVERRIDES: [(char, crate::raster::GlyphSeed); 8] = [
     ('%', crate::raster::GlyphSeed { pixels: 0x10a12108424284000, long_reach: false }),
+    ('&', crate::raster::GlyphSeed { pixels: 0x14022014023095000, long_reach: true }),
     ('/', crate::raster::GlyphSeed { pixels: 0x2004008010020000, long_reach: true }),
     ('1', crate::raster::GlyphSeed { pixels: 0x6292082082082000, long_reach: false }),
     ('7', crate::raster::GlyphSeed { pixels: 0x2a080100200410000, long_reach: true }),
