@@ -32,9 +32,24 @@ Unicode stamping expand them just like the keyboard/map icons. Space displays
 Single-cell/raw byte masks retain their existing layout; Unicode DEL expands
 to the three-cell `DEL` label.
 The `raster_quad` module provides the precomputed box, block and Braille quads.
-The `raster_line` experiment supplies two endpoint masks for `|` and `/` in the
-same 6×11 cell. Each draws as one native line, using the renderer's default
-width. These masks do not change bitmap stamping or other font consumers.
+The `raster_line` experiment supplies independent coordinate strips for `|` and
+`/`, leaving bitmap consumers unchanged. Each coordinate uses one byte: x in
+bits 0..2 (0–5), y in bits 3..6 (0–10); bit 7 is reserved. `glyph_strips` returns
+any number of strokes per override. A `Strip` holds at least two real points and
+separate `start` / `end` boundary tags (`End` or `Junction`).
+
+The demo expands each strip to `[adj_start, real_points..., adj_end]` and
+submits a separate native `LineStripAdj` draw. Adjacency positions duplicate the
+boundary point; their z component carries `Junction=0` or `End=1`. Real vertices
+use depth 0.5, so an interior neighbouring real vertex is distinguishable from
+both boundary tags. This z convention belongs only to the demo's adjacency
+transport, not ordinary geometry. The existing pass-through geometry shader
+emits only the two central real vertices, with the renderer's default line
+width. It does not yet implement caps, junction clipping or overlap removal.
+Cell-edge detection is independent of the boundary tags. Single-point strips
+are rejected; two identical points remain a degenerate line, with no guaranteed
+point coverage. Dot rendering remains a separate experiment.
+
 There is no reach setting or triangle reconstruction.
 
 `BLOCK_SYMBOLS` lists all 32 Block Elements as visible characters beside embedded
