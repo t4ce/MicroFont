@@ -57,7 +57,7 @@ pub const BASIC_SYMBOLS: [(char, u128); 128] = [
     ('1', 0x218a4a2082082000),
     ('2', 0x1c8a208421083e000),
     ('3', 0x1c8a208c0a289c000),
-    ('4', 0x4314524f84104000),
+    ('4', 0xc524924f84104000),
     ('5', 0x3e820f020820bc000),
     ('6', 0x1c8a083c8a289c000),
     ('7', 0x3e084108210410000),
@@ -70,7 +70,7 @@ pub const BASIC_SYMBOLS: [(char, u128); 128] = [
     ('>', 0x810204210800000),
     ('?', 0x1c8a2108200208000),
     ('@', 0x1e86dd75d75ba0780),
-    ('A', 0x8214514fa28a2000),
+    ('A', 0x85228be8a28a2000),
     ('B', 0x3c8a28bc8a28bc000),
     ('C', 0x1c8a082082089c000),
     ('D', 0x3c8a28a28a28bc000),
@@ -79,23 +79,23 @@ pub const BASIC_SYMBOLS: [(char, u128); 128] = [
     ('G', 0x1c8a082c8a289c000),
     ('H', 0x228a28be8a28a2000),
     ('I', 0x3e20820820823e000),
-    ('J', 0x3e08208208289c000),
-    ('K', 0x22924a30a24922000),
+    ('J', 0x3e8a208208289c000),
+    ('K', 0x22928c30c28922000),
     ('L', 0x2082082082083e000),
-    ('M', 0x22db6aaa8a28a2000),
-    ('N', 0x22cb2aaaaa69a2000),
+    ('M', 0x36aaaaaa8a28a2000),
+    ('N', 0x32aaaaaaaaaaa6000),
     ('O', 0x3e8a28a28a28be000),
     ('P', 0x3c8a28bc820820000),
-    ('Q', 0x1c8a28a28a291a000),
-    ('R', 0x3c8a28bca248a2000),
+    ('Q', 0x1c8a28a28aa91a000),
+    ('R', 0x3c8a28bcc28922000),
     ('S', 0x1c8a081c08289c000),
     ('T', 0x3e208208208208000),
     ('U', 0x228a28a28a289c000),
     ('V', 0x228a2894514208000),
     ('W', 0x228a28a2aaa514000),
-    ('X', 0x228945085148a2000),
-    ('Y', 0x22894508208208000),
-    ('Z', 0x3e08410841083e000),
+    ('X', 0x228a25085228a2000),
+    ('Y', 0x228a2894208208000),
+    ('Z', 0x3e08210842083e000),
     ('[', 0xe20820820820e000),
     ('\\', 0x20810408104082000),
     (']', 0x38208208208238000),
@@ -110,8 +110,8 @@ pub const BASIC_SYMBOLS: [(char, u128); 128] = [
     ('f', 0x620821c208208000),
     ('g', z(0x7a28a27827, 2)),
     ('h', 0x2082083c8a28a2000),
-    ('i', 0x8008208208000),
-    ('j', 0x8008208208a10),
+    ('i', 0x208008208208000),
+    ('j', 0x208008208208a10),
     ('k', 0x10410412518512000),
     ('l', 0x1041041041040c000),
     ('m', z(0x1e555555, 13)),
@@ -127,7 +127,7 @@ pub const BASIC_SYMBOLS: [(char, u128); 128] = [
     ('w', z(0x8aa7145, 14)),
     ('x', z(0x11284291, 13)),
     ('y', z(0x2289450821, 4)),
-    ('z', z(0x1f08421f, 13)),
+    ('z', 0x3e09c83e000),
     ('{', 0x2104108104102000),
     ('|', 0x8208208208208000),
     ('}', 0x20410408410420000),
@@ -135,20 +135,14 @@ pub const BASIC_SYMBOLS: [(char, u128); 128] = [
     ('\u{7f}', 0), // DEL
 ];
 
-/// Raster-only seed edits, shared by Dista Meso and Lean.
-/// `%` uses 13 sites: two four-site rings and a five-site diagonal, short reach.
-/// `/` removes the four staircase sites: five collinear sites remain at
-/// (4,0), (3,2), (2,4), (1,6), (0,8), connected with long reach.
-/// `A` uses a single apex at (2,1), diagonal shoulders and a full crossbar
-/// at row 5, with short reach.
-/// `y` uses eight sites: (0,4), (4,4), (0,6), (4,6), (1,7), (3,7),
-/// (2,8), (1,10), with long reach across the arm and descender gaps.
-/// These are reconstruction inputs, not replacement bitmap glyphs or quads.
 #[cfg(feature = "raster")]
-pub const BASIC_RASTER_OVERRIDES: [(char, crate::raster::GlyphSeed); 4] = [
+pub const BASIC_RASTER_OVERRIDES: [(char, crate::raster::GlyphSeed); 7] = [
     ('%', crate::raster::GlyphSeed { pixels: 0x10a12108424284000, long_reach: false }),
     ('/', crate::raster::GlyphSeed { pixels: 0x2004008010020000, long_reach: true }),
-    ('A', crate::raster::GlyphSeed { pixels: 0x2148a2fa28a2000, long_reach: false }),
+    ('1', crate::raster::GlyphSeed { pixels: 0x6292082082082000, long_reach: false }),
+    ('7', crate::raster::GlyphSeed { pixels: 0x2a080100200410000, long_reach: true }),
+    ('\\', crate::raster::GlyphSeed { pixels: 0x20010008004002000, long_reach: true }),
+    ('v', crate::raster::GlyphSeed { pixels: 0x22880508000, long_reach: true }),
     ('y', crate::raster::GlyphSeed { pixels: 0x22022508010, long_reach: true }),
 ];
 
