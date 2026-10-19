@@ -52,17 +52,90 @@ impl Strip {
     }
 }
 
-use Boundary::End;
+use Boundary::{End, Junction};
 // One glyph override may contain any number of independent strips.
 const BAR: &[Strip] = &[Strip::new(&[Point::new(2, 0), Point::new(2, 8)], End, End)];
 const SLASH: &[Strip] = &[Strip::new(&[Point::new(4, 0), Point::new(0, 8)], End, End)];
+/// Decode the fixed v1 strip format without allocating or copying point data.
+/// Each strip has a header: bits 0..5 = point count minus two, bit 6 =
+/// start End, bit 7 = end End. It is followed by that many packed points.
+/// The byte slice bounds the glyph; no terminator, alignment or native pointers
+/// are stored in the file. Invalid data is rejected during const evaluation.
+pub const fn decode_glyph<const STRIPS: usize>(bytes: &'static [u8]) -> [Strip; STRIPS] {
+    const EMPTY: Strip = Strip::new(&[Point::new(0, 0), Point::new(0, 0)], Junction, Junction);
+    let mut result = [EMPTY; STRIPS];
+    let mut cursor = 0;
+    let mut strip = 0;
+    while strip < STRIPS {
+        assert!(cursor < bytes.len(), "missing strip header");
+        let header = bytes[cursor];
+        let count = (header & 63) as usize + 2;
+        cursor += 1;
+        assert!(count <= bytes.len() - cursor, "truncated strip points");
+        let mut i = 0;
+        while i < count {
+            let packed = bytes[cursor + i];
+            assert!(packed & 128 == 0 && packed & 7 < 6 && packed >> 3 < 11,
+                "invalid packed point");
+            i += 1;
+        }
+        // SAFETY: Point is repr(transparent) over u8, with identical alignment.
+        // The entire range is in this static slice and validated above. Header
+        // bytes are excluded; bit 7 remains reserved in every actual point.
+        let points = unsafe {
+            core::slice::from_raw_parts(bytes.as_ptr().add(cursor).cast::<Point>(), count)
+        };
+        result[strip] = Strip::new(points,
+            if header & 64 != 0 { End } else { Junction },
+            if header & 128 != 0 { End } else { Junction });
+        cursor += count;
+        strip += 1;
+    }
+    assert!(cursor == bytes.len(), "unexpected trailing glyph bytes");
+    result
+}
+
+// These are views into the embedded binary; point data is stored only once.
+const CAPITAL_A: &[Strip] = &decode_glyph::<2>(include_bytes!("../data/line-v1/A.bin"));
+const CAPITAL_E: &[Strip] = &decode_glyph::<2>(include_bytes!("../data/line-v1/E.bin"));
 pub const fn glyph_strips(character: char) -> Option<&'static [Strip]> {
-    match character { '|' => Some(BAR), '/' => Some(SLASH), _ => None }
+    match character { '|' => Some(BAR), '/' => Some(SLASH), 'A' => Some(CAPITAL_A), 'E' => Some(CAPITAL_E), _ => None }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn binary_a_e_preserve_points_tags_and_storage() {
+        for (ch, expected, tags, size) in [
+            ('A', [&[(0,8),(0,2),(2,0),(4,2),(4,8)][..], &[(0,4),(4,4)][..]],
+                [(End,End),(Junction,Junction)], 9),
+            ('E', [&[(4,0),(0,0),(0,8),(4,8)][..], &[(0,4),(3,4)][..]],
+                [(End,End),(Junction,End)], 8),
+        ] {
+            let bytes: &'static [u8] = if ch == 'A' {
+                include_bytes!("../data/line-v1/A.bin")
+            } else { include_bytes!("../data/line-v1/E.bin") };
+            assert_eq!(bytes.len(), size);
+            let strips = glyph_strips(ch).unwrap();
+            let mut offset = 1;
+            for i in 0..2 {
+                let actual: std::vec::Vec<_> = strips[i].points.iter().map(|p| (p.x(),p.y())).collect();
+                assert_eq!(actual, expected[i]);
+                assert_eq!((strips[i].start, strips[i].end), tags[i]);
+                assert_eq!(strips[i].points.as_ptr().cast::<u8>(), bytes[offset..].as_ptr());
+                offset += expected[i].len() + 1;
+            }
+        }
+    }
+    #[test]
+    fn binary_rejects_bad_headers_lengths_and_coordinates() {
+        for bytes in [&[][..], &[0xc0, 0][..], &[0xc0, 0, 0, 0][..],
+            &[0xc0, 6, 0][..], &[0xc0, 88, 0][..], &[0xc0, 128, 0][..]] {
+            assert!(std::panic::catch_unwind(|| decode_glyph::<1>(bytes)).is_err());
+        }
+        assert!(std::panic::catch_unwind(|| decode_glyph::<1>(&[0xff])).is_err());
+    }
     #[test]
     fn overrides_preserve_original_bitmap_extremes() {
         for ch in ['|', '/'] {
