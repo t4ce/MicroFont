@@ -110,55 +110,21 @@ pub const fn glyph_strip_count(bytes: &[u8]) -> usize {
     count
 }
 
-// These are views into the embedded binary; point data is stored only once.
-const CAPITAL_A: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/A.bin")) }>(include_bytes!("../data/line-v1/A.bin"));
-const CAPITAL_E: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/E.bin")) }>(include_bytes!("../data/line-v1/E.bin"));
-const CAPITAL_R: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/R.bin")) }>(include_bytes!("../data/line-v1/R.bin"));
+// Generated views reference embedded binaries directly, without copying points.
+include!("generated_line_glyphs.rs");
 pub const fn glyph_strips(character: char) -> Option<&'static [Strip]> {
-    match character { '|' => Some(BAR), '/' => Some(SLASH), 'A' => Some(CAPITAL_A), 'E' => Some(CAPITAL_E), 'R' => Some(CAPITAL_R), _ => None }
+    match character { '|' => Some(BAR), '/' => Some(SLASH), _ => binary_glyph_strips(character) }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
-    fn binary_r_preserves_continuous_stroke() {
-        let strips = glyph_strips('R').unwrap();
-        assert_eq!(include_bytes!("../data/line-v1/R.bin").len(), 9);
-        assert_eq!(strips.len(), 1);
-        let expected = [(0,8),(0,0),(3,0),(4,1),(4,3),(3,4),(0,4),(4,8)];
-        assert_eq!(strips[0].points.iter().map(|p| (p.x(),p.y())).collect::<std::vec::Vec<_>>(), expected);
-        assert_eq!((strips[0].start,strips[0].end), (End,End));
-    }
-    #[test]
     fn strip_count_follows_replaced_binary_layout() {
         assert_eq!(glyph_strip_count(&[0xc0,0,64]), 1);
         assert_eq!(glyph_strip_count(&[0xc0,0,64,0x80,32,68,0x00,0,32]), 3);
         assert!(std::panic::catch_unwind(|| glyph_strip_count(&[0xc1,0,64])).is_err());
         assert!(std::panic::catch_unwind(|| glyph_strip_count(&[])).is_err());
-    }
-    #[test]
-    fn binary_a_e_preserve_points_tags_and_storage() {
-        for (ch, expected, tags, size) in [
-            ('A', [&[(0,8),(0,2),(2,0),(4,2),(4,8)][..], &[(0,4),(4,4)][..]],
-                [(End,End),(Junction,Junction)], 9),
-            ('E', [&[(4,0),(0,0),(0,8),(4,8)][..], &[(0,4),(3,4)][..]],
-                [(End,End),(Junction,End)], 8),
-        ] {
-            let bytes: &'static [u8] = if ch == 'A' {
-                include_bytes!("../data/line-v1/A.bin")
-            } else { include_bytes!("../data/line-v1/E.bin") };
-            assert_eq!(bytes.len(), size);
-            let strips = glyph_strips(ch).unwrap();
-            let mut offset = 1;
-            for i in 0..2 {
-                let actual: std::vec::Vec<_> = strips[i].points.iter().map(|p| (p.x(),p.y())).collect();
-                assert_eq!(actual, expected[i]);
-                assert_eq!((strips[i].start, strips[i].end), tags[i]);
-                assert_eq!(strips[i].points.as_ptr().cast::<u8>(), bytes[offset..].as_ptr());
-                offset += expected[i].len() + 1;
-            }
-        }
     }
     #[test]
     fn binary_rejects_bad_headers_lengths_and_coordinates() {
@@ -185,7 +151,6 @@ mod tests {
             assert_eq!(strips[0].adjacency_vertex(0).unwrap()[2], 1.0);
             assert_eq!(strips[0].adjacency_vertex(3).unwrap()[2], 1.0);
         }
-        assert!(glyph_strips('T').is_none()); // Example below is a format test only.
     }
     #[test]
     fn t_has_independent_strokes_and_three_ends_one_junction() {

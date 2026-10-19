@@ -24,12 +24,20 @@ Then follow that many one-byte points:
 A new record starts immediately after those points. End-of-slice ends the glyph.
 There is no byte order dependency because every field fits in one byte.
 
-The checked-in files preserve the supplied A, E and R coordinates and tags:
+## Adding glyphs to the demo
 
-- `A.bin`: `C3 40 10 02 14 44 00 20 24` (7 points + 2 headers = **9 bytes**).
-- `E.bin`: `C2 04 00 40 44 80 20 23` (6 points + 2 headers = **8 bytes**).
+Place a file named `A.bin` through `Z.bin` in this directory, then run `make iso`
+from TRUEOS. The build runs `tools/generate_line_glyphs.py` before compiling the
+kernel, indexing every present uppercase letter. New files, replaced contents,
+changed strip counts and removed files need no manual Rust registration.
+Invalid data stops the build with the filename and byte offset.
 
-- `R.bin`: `C6 40 00 03 0C 1C 23 20 44` (8 points + 1 header = **9 bytes**).
+The UI4 preview reserves 26 cells in two rows: A–M, then N–Z. Missing files leave
+empty cells. Files are embedded at build time; adding a file does not change a
+running image. Each glyph stays at 96×176 pixels, with scroll-controlled width.
+
+For example, a two-point End/End strip from (0,0) to (0,8) is `C0 00 40`: two
+coordinate bytes plus one control byte. Multiple records concatenate directly.
 
 `raster_line::decode_glyph` validates these at compile time and exposes
 point slices directly into `include_bytes!` data. The existing renderer consumes
