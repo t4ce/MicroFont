@@ -95,16 +95,48 @@ pub const fn decode_glyph<const STRIPS: usize>(bytes: &'static [u8]) -> [Strip; 
     result
 }
 
+/// Count records from their headers, without adding a count byte to the file.
+pub const fn glyph_strip_count(bytes: &[u8]) -> usize {
+    let mut cursor = 0;
+    let mut count = 0;
+    while cursor < bytes.len() {
+        let points = (bytes[cursor] & 63) as usize + 2;
+        cursor += 1;
+        assert!(points <= bytes.len() - cursor, "truncated strip points");
+        cursor += points;
+        count += 1;
+    }
+    assert!(count > 0, "empty glyph");
+    count
+}
+
 // These are views into the embedded binary; point data is stored only once.
-const CAPITAL_A: &[Strip] = &decode_glyph::<2>(include_bytes!("../data/line-v1/A.bin"));
-const CAPITAL_E: &[Strip] = &decode_glyph::<2>(include_bytes!("../data/line-v1/E.bin"));
+const CAPITAL_A: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/A.bin")) }>(include_bytes!("../data/line-v1/A.bin"));
+const CAPITAL_E: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/E.bin")) }>(include_bytes!("../data/line-v1/E.bin"));
+const CAPITAL_R: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/R.bin")) }>(include_bytes!("../data/line-v1/R.bin"));
 pub const fn glyph_strips(character: char) -> Option<&'static [Strip]> {
-    match character { '|' => Some(BAR), '/' => Some(SLASH), 'A' => Some(CAPITAL_A), 'E' => Some(CAPITAL_E), _ => None }
+    match character { '|' => Some(BAR), '/' => Some(SLASH), 'A' => Some(CAPITAL_A), 'E' => Some(CAPITAL_E), 'R' => Some(CAPITAL_R), _ => None }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn binary_r_preserves_continuous_stroke() {
+        let strips = glyph_strips('R').unwrap();
+        assert_eq!(include_bytes!("../data/line-v1/R.bin").len(), 9);
+        assert_eq!(strips.len(), 1);
+        let expected = [(0,8),(0,0),(3,0),(4,1),(4,3),(3,4),(0,4),(4,8)];
+        assert_eq!(strips[0].points.iter().map(|p| (p.x(),p.y())).collect::<std::vec::Vec<_>>(), expected);
+        assert_eq!((strips[0].start,strips[0].end), (End,End));
+    }
+    #[test]
+    fn strip_count_follows_replaced_binary_layout() {
+        assert_eq!(glyph_strip_count(&[0xc0,0,64]), 1);
+        assert_eq!(glyph_strip_count(&[0xc0,0,64,0x80,32,68,0x00,0,32]), 3);
+        assert!(std::panic::catch_unwind(|| glyph_strip_count(&[0xc1,0,64])).is_err());
+        assert!(std::panic::catch_unwind(|| glyph_strip_count(&[])).is_err());
+    }
     #[test]
     fn binary_a_e_preserve_points_tags_and_storage() {
         for (ch, expected, tags, size) in [

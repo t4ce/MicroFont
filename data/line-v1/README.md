@@ -24,15 +24,17 @@ Then follow that many one-byte points:
 A new record starts immediately after those points. End-of-slice ends the glyph.
 There is no byte order dependency because every field fits in one byte.
 
-The checked-in files preserve the supplied A and E coordinates and tags:
+The checked-in files preserve the supplied A, E and R coordinates and tags:
 
 - `A.bin`: `C3 40 10 02 14 44 00 20 24` (7 points + 2 headers = **9 bytes**).
 - `E.bin`: `C2 04 00 40 44 80 20 23` (6 points + 2 headers = **8 bytes**).
 
-`raster_line::decode_glyph::<2>` validates these at compile time and exposes
+- `R.bin`: `C6 40 00 03 0C 1C 23 20 44` (8 points + 1 header = **9 bytes**).
+
+`raster_line::decode_glyph` validates these at compile time and exposes
 point slices directly into `include_bytes!` data. The existing renderer consumes
 those views; it generates adjacency vertices during upload. Rust strip views
 contain pointers/lengths in memory, but these are not part of the file format.
 Invalid coordinates, reserved point bits, truncation, missing records and
-trailing bytes cause validation to fail. The caller supplies the expected strip
-count; no strip-count byte is stored.
+trailing bytes cause validation to fail. The loader infers the strip count from the record headers at compile time;
+no strip-count byte is stored.

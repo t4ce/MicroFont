@@ -7,15 +7,20 @@ layout(push_constant) uniform Params {
     vec4 rgba;
 } p;
 layout(location=0) out vec4 color;
+// The active native raster uses major-axis line width and perpendicular caps.
+// Convert its configured half-width to the true perpendicular distance before
+// rounding. A half-width radius gives a fully round cap on every slope.
 bool trim_corner(vec4 endpoint, float enabled) {
     if (enabled == 0.0 || p.style.y <= 0.0) return false;
+    vec2 inward = endpoint.zw;
+    float half_width = p.style.x * max(abs(inward.x), abs(inward.y));
+    float radius = min(p.style.y, half_width);
     vec2 d = gl_FragCoord.xy - endpoint.xy;
-    float along = dot(d, endpoint.zw);
-    float across = abs(dot(d, vec2(-endpoint.w, endpoint.z)));
-    float radius = p.style.y;
-    if (along < 0.0 || along >= radius || across <= p.style.x-radius || across > p.style.x)
+    float along = dot(d, inward);
+    float across = abs(dot(d, vec2(-inward.y, inward.x)));
+    if (along < 0.0 || along >= radius || across <= half_width-radius || across > half_width)
         return false;
-    vec2 q = vec2(across-(p.style.x-radius), radius-along);
+    vec2 q = vec2(across-(half_width-radius), radius-along);
     return dot(q,q) > radius*radius;
 }
 void main() {

@@ -1,4 +1,4 @@
-//! Font shape selection, independent of raster or stamp support.
+//! Named native-line weight presets for the current glyph experiments.
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FontShape {
@@ -7,14 +7,11 @@ pub enum FontShape {
 }
 
 impl FontShape {
-    /// Dista influence width in source-cell units, shared by Meso and Lean.
-    pub const INFLUENCE_WIDTH: f64 = 0.20;
-
-    /// Dista uses 90° and 45° angles with softly rounded corners.
-    pub const fn body_threshold(self) -> f64 {
+    /// Native screen-pixel width at the demo's current glyph size.
+    pub const fn line_width_px(self) -> f32 {
         match self {
-            Self::Meso => 0.22,
-            Self::Lean => 0.63,
+            Self::Meso => 9.0,
+            Self::Lean => 7.0,
         }
     }
 }
