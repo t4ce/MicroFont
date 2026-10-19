@@ -4,11 +4,11 @@ MicroFont is a tiny `no_std` 6x11 bitmap font stamper for flat pixel buffers.
 
 ![MicroFont 3.9.9: color CP850 atlas, Braille, block elements, and ARGB styles](https://raw.githubusercontent.com/t4ce/MicroFont/true/docs/font-atlas.png)
 
-It exposes the packed font table, direct byte/text stamping helpers, and ARGB helpers for alpha, underline, strikeout, and vertical flip styling. Raw data and stamping have no dependencies; optional CPU triangle reconstruction uses `alloc` and `libm` with `raster`.
+It exposes the packed font table, direct byte/text stamping helpers, and ARGB helpers for alpha, underline, strikeout, and vertical flip styling. Raw data and stamping have no dependencies; optional quad and line data is enabled with `raster`.
 
 The default `stamp` feature enables all buffer stamping helpers. Use
 `default-features = false` for pixel data and lookup APIs alone. The independent
-`raster` feature adds `raster::BRAILLE_QUADS`, `braille_quad_slice` and
+`raster` feature adds `raster_quad::BRAILLE_QUADS`, `braille_quad_slice` and
 `braille_quads`; it does not require `stamp`. The independent, non-default
 `han` feature includes the Chinese GUI subset, its tables and accessors.
 Without `han`, those tables and lookup code are excluded and unsupported Han
@@ -31,51 +31,11 @@ Unicode stamping expand them just like the keyboard/map icons. Space displays
 `SP` in two cells. `control_label_cells` exposes their precomputed mask slices.
 Single-cell/raw byte masks retain their existing layout; Unicode DEL expands
 to the three-cell `DEL` label.
-Basic Latin uses triangle reconstruction rather than quad raster data.
-Dista is the single font, with 90° and 45° angles and softly rounded corners.
-`FontShape::INFLUENCE_WIDTH` is fixed at 0.20 source units for both shapes.
-`FontShape::body_threshold()` returns 0.22 for Meso and 0.63 for Lean.
-These settings live in `src/fontshape.rs`.
-Per-glyph seed/reach overrides are independent of these settings.
-`FontDetail` selects triangle tessellation independently of shape:
-`Fine = 0` (the default) uses 12 subdivisions per source-cell unit, and `High = 1`
-uses 24, matching the HTML presets. `FontDetail::from_level` accepts a 0/1 setting;
-`subdivisions_per_cell()` sets the Basic Latin triangle builder's geometry resolution.
-The existing pixel and quad data are unaffected.
-
-
-With `raster`, `basic_seed` selects the common Dista reconstruction input before
-the Meso/Lean choice. `BASIC_RASTER_OVERRIDES` contains `%`, `/`, `A`, and `y`.
-`%` uses 13 sites (two four-site rings and a five-site diagonal), with full-cell
-mask `0x10a12108424284000` and short reach. `/` uses five collinear sites instead
-of the bitmap's nine staircase sites, with mask `0x2004008010020000`, tagged
-`long_reach`. `y` uses eight sites at (0,4), (4,4), (0,6), (4,6), (1,7),
-(3,7), (2,8), and (1,10), with mask `0x22022508010` and long reach to bridge
-the arm and descender gaps. `A` uses a single apex at (2,1), diagonal shoulders,
-and a full crossbar at row 5, with mask `0x2148a2fa28a2000` and short reach.
-Short reach is 1.76; long reach is 2.76. All other Basic Latin seeds
-use their existing masks and short reach. The original bitmap masks remain unchanged.
-
-`raster_tri::dista_triangles(character, shape, detail)` constructs the rounded
-distance envelope on the CPU and returns an allocated `TriangleMesh` containing
-source-space vertices and triangle-list indices. It accepts single printable
-Basic Latin glyphs (`!` through `~`) and all Braille patterns; controls, `SP`,
-`DEL` and other Unicode characters return `None`. Basic Latin uses
-neutral connections, closed-disc shortcut pruning, compact Gaussian support,
-adaptive interior merging and welded, stitched boundary triangles, following
-the HTML field construction. Detail changes actual mesh geometry. The
-sampling/triangulation machinery lives in `src/raster_tri/mesh.rs`.
-
-Braille takes the direct `raster_tri::dista_braille_triangles` route, which is
-also selected by `dista_triangles`. Each lit dot is a circle fan centred on its
-original Microfont pixel cell: `(1.5, 1.5)`, `(1.5, 3.5)`, `(1.5, 5.5)`,
-`(4.5, 1.5)`, `(4.5, 3.5)`, `(4.5, 5.5)`, `(1.5, 7.5)`, `(4.5, 7.5)` in
-Unicode dot order. Diameter is derived from the same Dista influence width and
-body threshold: approximately 0.696 source units for Meso and 0.385 for Lean.
-`FontDetail::braille_triangles_per_dot()` gives 36 for Fine and 72 for High;
-all eight dots therefore use at most 288 or 576 triangles. Blank Braille has
-no triangles. Braille uses no field sampling or link reconstruction, and its
-existing raw pixels and square-dot quad data remain available.
+The `raster_quad` module provides the precomputed box, block and Braille quads.
+The `raster_line` experiment supplies two endpoint masks for `|` and `/` in the
+same 6×11 cell. Each draws as one native line, using the renderer's default
+width. These masks do not change bitmap stamping or other font consumers.
+There is no reach setting or triangle reconstruction.
 
 `BLOCK_SYMBOLS` lists all 32 Block Elements as visible characters beside embedded
 hex masks. With `raster`, `BLOCK_QUADS`, `block_quad_slice` and `block_quads`

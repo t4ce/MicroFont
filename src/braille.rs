@@ -10,7 +10,7 @@ const DOTS: [(u8, u8); 8] = [
 pub(crate) struct BrailleData {
     pub pixels: [u64; 256],
     #[cfg(feature = "raster")]
-    pub quads: [crate::raster::BrailleGlyph; 256],
+    pub quads: [crate::raster_quad::BrailleGlyph; 256],
 }
 
 pub(crate) const DATA: BrailleData = generate();
@@ -19,7 +19,7 @@ const fn generate() -> BrailleData {
     let mut data = BrailleData {
         pixels: [0; 256],
         #[cfg(feature = "raster")]
-        quads: [crate::raster::BrailleGlyph::EMPTY; 256],
+        quads: [crate::raster_quad::BrailleGlyph::EMPTY; 256],
     };
     let mut pattern = 0;
     while pattern < 256 {
@@ -31,7 +31,7 @@ const fn generate() -> BrailleData {
                 #[cfg(feature = "raster")]
                 {
                     let glyph = &mut data.quads[pattern];
-                    glyph.quads[glyph.len as usize] = crate::raster::Quad {
+                    glyph.quads[glyph.len as usize] = crate::raster_quad::Quad {
                         top_left: [x, y], bottom_right: [x + 1, y + 1],
                     };
                     glyph.len += 1;

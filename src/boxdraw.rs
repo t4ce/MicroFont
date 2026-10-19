@@ -150,8 +150,8 @@ pub(crate) const RASTER_SYMBOLS: [(char, u128); 128] = {
 };
 
 #[cfg(feature = "raster")]
-pub(crate) const fn diagonal_quads(character: char) -> &'static [crate::raster::BoxDrawQuad] {
-    use crate::raster::BoxDrawQuad;
+pub(crate) const fn diagonal_quads(character: char) -> &'static [crate::raster_quad::BoxDrawQuad] {
+    use crate::raster_quad::BoxDrawQuad;
     const SLASH: BoxDrawQuad = BoxDrawQuad { vertices: [
         [5.0, 0.0], [6.0, 0.0], [1.0, 11.0], [0.0, 11.0],
     ] };

@@ -135,18 +135,6 @@ pub const BASIC_SYMBOLS: [(char, u128); 128] = [
     ('\u{7f}', 0), // DEL
 ];
 
-#[cfg(feature = "raster")]
-pub const BASIC_RASTER_OVERRIDES: [(char, crate::raster::GlyphSeed); 8] = [
-    ('%', crate::raster::GlyphSeed { pixels: 0x10a12108424284000, long_reach: false }),
-    ('&', crate::raster::GlyphSeed { pixels: 0x14022014023095000, long_reach: true }),
-    ('/', crate::raster::GlyphSeed { pixels: 0x2004008010020000, long_reach: true }),
-    ('1', crate::raster::GlyphSeed { pixels: 0x6292082082082000, long_reach: false }),
-    ('7', crate::raster::GlyphSeed { pixels: 0x2a080100200410000, long_reach: true }),
-    ('\\', crate::raster::GlyphSeed { pixels: 0x20010008004002000, long_reach: true }),
-    ('v', crate::raster::GlyphSeed { pixels: 0x22880508000, long_reach: true }),
-    ('y', crate::raster::GlyphSeed { pixels: 0x22022508010, long_reach: true }),
-];
-
 const CONTROL_NAMES: [&str; 34] = [
     "NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
     "BS", "HT", "LF", "VT", "FF", "CR", "SO", "SI",

@@ -12,8 +12,6 @@ mod cp850;
 pub use cp850::{CP850_SYMBOLS, FPIXELS, font_pixels, glyph_byte, glyph_character};
 mod fontshape;
 pub use fontshape::FontShape;
-mod fontdetail;
-pub use fontdetail::FontDetail;
 #[cfg(feature = "han")]
 mod gui_han;
 mod braille;
@@ -24,9 +22,9 @@ pub use blocks::BLOCK_SYMBOLS;
 #[cfg(feature = "stamp")]
 mod stamp;
 #[cfg(feature = "raster")]
-pub mod raster;
+pub mod raster_quad;
 #[cfg(feature = "raster")]
-pub mod raster_tri;
+pub mod raster_line;
 #[cfg(feature = "stamp")]
 pub use stamp::{
     stamp_argb, stamp_argb_stride, stamp_bytes, stamp_bytes_with_stride,
