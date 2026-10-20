@@ -68,7 +68,7 @@ impl Strip {
 
 /// Aliases only change coordinate interpretation; point bytes and tags are shared.
 #[derive(Clone, Copy)]
-pub enum GlyphTransform { MirrorX, Rotate180 }
+pub enum GlyphTransform { MirrorX, MirrorY, Rotate180 }
 
 pub const fn transformed_glyph<const N: usize>(source: &[Strip], transform: GlyphTransform) -> [Strip; N] {
     assert!(N > 0 && source.len() == N);
@@ -95,10 +95,13 @@ pub const fn transformed_glyph<const N: usize>(source: &[Strip], transform: Glyp
     i = 0;
     while i < N {
         result[i] = source[i];
-        result[i].flip_x_sum = min_x + max_x;
+        result[i].flip_x_sum = match transform {
+            GlyphTransform::MirrorY => u8::MAX,
+            GlyphTransform::MirrorX | GlyphTransform::Rotate180 => min_x + max_x,
+        };
         result[i].flip_y_sum = match transform {
             GlyphTransform::MirrorX => u8::MAX,
-            GlyphTransform::Rotate180 => min_y + max_y,
+            GlyphTransform::MirrorY | GlyphTransform::Rotate180 => min_y + max_y,
         };
         i += 1;
     }
