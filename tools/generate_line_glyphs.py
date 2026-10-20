@@ -7,7 +7,13 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ALIASES = {'9': ('6', 'Rotate180'), 'd': ('b', 'MirrorX'), 'q': ('p', 'MirrorX'), 'u': ('n', 'Rotate180'), 'f': ('t', 'MirrorY')}
+ALIASES = {
+    '9': ('6', 'Rotate180'), 'd': ('b', 'MirrorX'),
+    'q': ('p', 'MirrorX'), 'u': ('n', 'Rotate180'), 'f': ('t', 'MirrorY'),
+    ')': ('(', 'MirrorX'), '>': ('<', 'MirrorX'),
+    ']': ('[', 'MirrorX'), '}': ('{', 'MirrorX'),
+    '\\': ('/', 'MirrorX'), '¿': ('?', 'Rotate180'),
+}
 
 def identifier(ch):
     return f'BINARY_{ord(ch):04X}'

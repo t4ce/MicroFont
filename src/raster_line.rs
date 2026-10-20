@@ -111,7 +111,6 @@ pub const fn transformed_glyph<const N: usize>(source: &[Strip], transform: Glyp
 use Boundary::{End, Junction};
 // One glyph override may contain any number of independent strips.
 const BAR: &[Strip] = &[Strip::new(&[Point::new(2, 0), Point::new(2, 8)], End, End)];
-const SLASH: &[Strip] = &[Strip::new(&[Point::new(4, 0), Point::new(0, 8)], End, End)];
 /// Decode the fixed v1 strip format without allocating or copying point data.
 /// Each strip has a header: bits 0..5 = point count minus two, bit 6 =
 /// start End, bit 7 = end End. It is followed by that many packed points.
@@ -169,7 +168,10 @@ pub const fn glyph_strip_count(bytes: &[u8]) -> usize {
 // Generated views reference embedded binaries directly, without copying points.
 include!("generated_line_glyphs.rs");
 pub const fn glyph_strips(character: char) -> Option<&'static [Strip]> {
-    match character { '|' => Some(BAR), '/' => Some(SLASH), _ => binary_glyph_strips(character) }
+    match binary_glyph_strips(character) {
+        Some(strips) => Some(strips),
+        None => match character { '|' => Some(BAR), _ => None },
+    }
 }
 
 #[cfg(test)]
@@ -191,12 +193,11 @@ mod tests {
         assert!(std::panic::catch_unwind(|| decode_glyph::<1>(&[0xff])).is_err());
     }
     #[test]
-    fn overrides_preserve_original_bitmap_extremes() {
-        for ch in ['|', '/'] {
+    fn builtin_fallback_preserves_original_bitmap_extremes() {
+        for (ch, strips) in [('|', BAR)] {
             let original = crate::BASIC_SYMBOLS[ch as usize].1;
             let expected = (1u128 << original.trailing_zeros())
                 | (1u128 << (127 - original.leading_zeros()));
-            let strips = glyph_strips(ch).unwrap();
             assert_eq!(strips.len(), 1);
             assert_eq!(strips[0].segments(), 1);
             let mut mask = 0u128;
