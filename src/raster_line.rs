@@ -27,14 +27,28 @@ pub enum Boundary { Junction = 0, End = 1 }
 /// adjacency vertices generated at upload. Multiple strips require separate draws.
 #[derive(Clone, Copy, Debug)]
 pub struct Strip {
+    /// Canonical point bytes, shared by transformed glyph views. Use point()
+    /// or iter_points() for coordinates in the requested glyph's orientation.
     pub points: &'static [Point],
     pub start: Boundary,
     pub end: Boundary,
+    flip_x_sum: u8,
+    flip_y_sum: u8,
 }
 impl Strip {
     pub const fn new(points: &'static [Point], start: Boundary, end: Boundary) -> Self {
         assert!(points.len() >= 2);
-        Self { points, start, end }
+        Self { points, start, end, flip_x_sum: u8::MAX, flip_y_sum: u8::MAX }
+    }
+    pub const fn point(self, index: usize) -> Option<Point> {
+        if index >= self.points.len() { return None; }
+        let p = self.points[index];
+        Some(Point::new(
+            if self.flip_x_sum == u8::MAX { p.x() } else { self.flip_x_sum - p.x() },
+            if self.flip_y_sum == u8::MAX { p.y() } else { self.flip_y_sum - p.y() }))
+    }
+    pub fn iter_points(self) -> impl ExactSizeIterator<Item = Point> {
+        (0..self.points.len()).map(move |i| self.point(i).unwrap())
     }
     pub const fn segments(self) -> usize { self.points.len() - 1 }
     /// Source coordinates plus z: real vertices use depth 0.5; adjacency-only
@@ -42,14 +56,53 @@ impl Strip {
     /// This is a demo transport contract, not a generic position.z convention.
     pub fn adjacency_vertex(self, index: usize) -> Option<[f32; 3]> {
         let (point, z) = if index == 0 {
-            (*self.points.first()?, self.start as u8 as f32)
+            (self.point(0)?, self.start as u8 as f32)
         } else if index <= self.points.len() {
-            (self.points[index - 1], 0.5)
+            (self.point(index - 1)?, 0.5)
         } else if index == self.points.len() + 1 {
-            (*self.points.last()?, self.end as u8 as f32)
+            (self.point(self.points.len() - 1)?, self.end as u8 as f32)
         } else { return None; };
         Some([point.x() as f32, point.y() as f32, z])
     }
+}
+
+/// Aliases only change coordinate interpretation; point bytes and tags are shared.
+#[derive(Clone, Copy)]
+pub enum GlyphTransform { MirrorX, Rotate180 }
+
+pub const fn transformed_glyph<const N: usize>(source: &[Strip], transform: GlyphTransform) -> [Strip; N] {
+    assert!(N > 0 && source.len() == N);
+    let mut min_x = 5;
+    let mut max_x = 0;
+    let mut min_y = 10;
+    let mut max_y = 0;
+    let mut i = 0;
+    while i < N {
+        // Generated aliases always reference canonical bins, never other aliases.
+        assert!(source[i].flip_x_sum == u8::MAX && source[i].flip_y_sum == u8::MAX);
+        let mut j = 0;
+        while j < source[i].points.len() {
+            let p = source[i].points[j];
+            if p.x() < min_x { min_x = p.x(); }
+            if p.x() > max_x { max_x = p.x(); }
+            if p.y() < min_y { min_y = p.y(); }
+            if p.y() > max_y { max_y = p.y(); }
+            j += 1;
+        }
+        i += 1;
+    }
+    let mut result = [source[0]; N];
+    i = 0;
+    while i < N {
+        result[i] = source[i];
+        result[i].flip_x_sum = min_x + max_x;
+        result[i].flip_y_sum = match transform {
+            GlyphTransform::MirrorX => u8::MAX,
+            GlyphTransform::Rotate180 => min_y + max_y,
+        };
+        i += 1;
+    }
+    result
 }
 
 use Boundary::{End, Junction};
