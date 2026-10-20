@@ -9,15 +9,17 @@ layout(push_constant) uniform Params {
     vec4 transform; // source scale, line width in pixels, inverse target extent
 } p;
 // Zero style.y retains the regular atlas used by existing consumers.
-// Demo cells add pixel gutters without modifying the resident source vertices.
-vec2 source_pixel(vec2 at) {
+// Physical-size cells add pixel gutters without changing source vertices.
+vec2 source_pixel_in_cell(vec2 at,vec2 cell) {
     float scale = p.transform.x;
     if (p.style.y == 0.0) return at*scale;
     vec2 grid = vec2(6.0,11.0);
-    vec2 cell = floor(at/grid);
     float gutter = max(6.0,ceil(p.transform.y*0.5)+1.0);
     vec2 pitch = vec2(ceil(p.style.y*6.0/11.0),p.style.y)+2.0*gutter;
     return cell*pitch + (at-cell*grid)*scale + gutter;
+}
+vec2 source_pixel(vec2 at) {
+    return source_pixel_in_cell(at,floor(at/vec2(6.0,11.0)));
 }
 void main() {
     vec2 pixel;
@@ -34,7 +36,10 @@ void main() {
         depth = rounded ? 0.5 + float(centre)/65536.0
             : (middle ? (-source.y-1.0)*p.transform.y/64.0 : 0.0);
     } else {
-        pixel = source_pixel(source.xy);
+        if (p.style.x == 0.0) {
+            uint slot = uint(-source.z-1.0);
+            pixel = source_pixel_in_cell(source.xy,vec2(slot%16u,slot/16u));
+        } else pixel = source_pixel(source.xy);
         if (p.style.x > 0.0) {
             // Grow the native bar outwards; the seed remains the cap centre.
             // Adjacency vertices and junction endpoints are never extended.
