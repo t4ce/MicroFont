@@ -28,11 +28,11 @@ There is no byte order dependency because every field fits in one byte.
 
 Place a file named `A.bin`–`Z.bin`, `0.bin`–`8.bin`, or `a.bin`–`z.bin` (except `d.bin`, `q.bin` and `u.bin`), in this directory, then run `make iso`
 from TRUEOS. The build runs `tools/generate_line_glyphs.py` before compiling the
-kernel, indexing every present letter and digit. New files, replaced contents,
+kernel, indexing every present letter, digit and supported symbol. New files, replaced contents,
 changed strip counts and removed files need no manual Rust registration.
 Invalid data stops the build with the filename and byte offset.
 
-The UI4 preview reserves five rows: A–M, N–Z, 0–9, a–m, then n–z. Missing files leave
+The UI4 preview reserves six rows: A–M, N–Z, 0–9, a–m, n–z, then @ % $. Missing files leave
 empty cells. Files are embedded at build time; adding a file does not change a
 running image. Each glyph stays at 96×176 pixels, with scroll-controlled width.
 
@@ -60,3 +60,6 @@ across all of its strips. For the current 6 and b, these are x=0–4 and y=0–8
 The original point slices and boundary tags are shared. No transformed point
 array or second binary is stored; Strip::point/iter_points and adjacency_vertex
 apply the transform when consumed. The public points slice is canonical data.
+
+The symbol row reads `@.bin`, `%.bin` and `$.bin` from this directory. Missing
+symbols stay blank and are picked up automatically by the next `make iso`.
