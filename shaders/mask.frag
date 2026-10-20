@@ -25,8 +25,10 @@ float end_coverage(vec4 endpoint, float enabled) {
     float along = dot(d,endpoint.zw);
     float radius = p.style.x;
     float across = abs(dot(d,vec2(-endpoint.w,endpoint.z)));
-    if (along < -0.5 || along >= radius || across > radius) return 1.0;
-    return clamp(radius-length(vec2(across,radius-along)),0.0,1.0);
+    // Only shade the added outer half-disc. The original body stays intact.
+    // Bound the test so other segments returning behind this end are untouched.
+    if (along < -radius-0.5 || along >= 0.0 || across > radius) return 1.0;
+    return clamp(radius-length(vec2(across,along)),0.0,1.0);
 }
 void main() {
     float coverage = 1.0;

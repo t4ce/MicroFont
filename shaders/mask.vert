@@ -35,6 +35,14 @@ void main() {
             : (middle ? (-source.y-1.0)*p.transform.y/64.0 : 0.0);
     } else {
         pixel = source_pixel(source.xy);
+        if (p.style.x > 0.0) {
+            // Grow the native bar outwards; the seed remains the cap centre.
+            // Adjacency vertices and junction endpoints are never extended.
+            if (source.z == 0.25 && p.style.z != 0.0)
+                pixel -= p.start_point_direction.zw*p.style.x;
+            if (source.z == 0.75 && p.style.w != 0.0)
+                pixel -= p.end_point_direction.zw*p.style.x;
+        }
     }
     gl_Position = vec4(pixel*vec2(2.0,-2.0)*p.transform.zw + vec2(-1.0,1.0),depth,1.0);
 }
