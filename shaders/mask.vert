@@ -12,12 +12,16 @@ void main() {
     vec2 pixel;
     float depth = 0.5;
     if (p.style.x < 0.0) {
-        uint centre = uint(source.x);
+        uint recipe = uint(source.x);
+        uint centre = recipe & 32767u;
         vec2 at = vec2(centre & 127u, centre >> 7u) + 0.5;
-        bool middle = source.y < -0.5;
+        bool rounded = (recipe & 32768u) != 0u;
+        bool middle = !rounded && source.y < -0.5;
         pixel = at*p.transform.x + (middle ? vec2(0.0) : source.yz*p.transform.y);
-        // Distance to the exposed edge, interpolated by the rasterizer.
-        depth = middle ? (-source.y-1.0)*p.transform.y/16.0 : 0.0;
+        // Depth is only a PS payload: low range = bevel edge distance;
+        // upper range = constant exact packed centre for a circular sector.
+        depth = rounded ? 0.5 + float(centre)/65536.0
+            : (middle ? (-source.y-1.0)*p.transform.y/64.0 : 0.0);
     } else {
         pixel = source.xy*p.transform.x;
     }

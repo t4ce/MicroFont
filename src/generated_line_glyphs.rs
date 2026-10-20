@@ -60,6 +60,7 @@ const BINARY_0077: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!
 const BINARY_0078: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u0078.bin")) }>(include_bytes!("../data/line-v1/u0078.bin"));
 const BINARY_0079: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u0079.bin")) }>(include_bytes!("../data/line-v1/u0079.bin"));
 const BINARY_007A: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u007A.bin")) }>(include_bytes!("../data/line-v1/u007A.bin"));
+const BINARY_00A7: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u00A7.bin")) }>(include_bytes!("../data/line-v1/u00A7.bin"));
 const BINARY_0039: &[Strip] = &transformed_glyph::<{ BINARY_0036.len() }>(BINARY_0036, GlyphTransform::Rotate180);
 const BINARY_0064: &[Strip] = &transformed_glyph::<{ BINARY_0062.len() }>(BINARY_0062, GlyphTransform::MirrorX);
 const BINARY_0071: &[Strip] = &transformed_glyph::<{ BINARY_0070.len() }>(BINARY_0070, GlyphTransform::MirrorX);
@@ -127,6 +128,7 @@ const fn binary_glyph_strips(character: char) -> Option<&'static [Strip]> {
         '\u{78}' => Some(BINARY_0078),
         '\u{79}' => Some(BINARY_0079),
         '\u{7A}' => Some(BINARY_007A),
+        '\u{A7}' => Some(BINARY_00A7),
         '\u{39}' => Some(BINARY_0039),
         '\u{64}' => Some(BINARY_0064),
         '\u{71}' => Some(BINARY_0071),
