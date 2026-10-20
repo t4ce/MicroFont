@@ -26,7 +26,7 @@ There is no byte order dependency because every field fits in one byte.
 
 ## Adding glyphs to the demo
 
-Place a file named `A.bin`–`Z.bin`, `0.bin`–`8.bin`, or `a.bin`–`z.bin` (except `d.bin` and `q.bin`), in this directory, then run `make iso`
+Place a file named `A.bin`–`Z.bin`, `0.bin`–`8.bin`, or `a.bin`–`z.bin` (except `d.bin`, `q.bin` and `u.bin`), in this directory, then run `make iso`
 from TRUEOS. The build runs `tools/generate_line_glyphs.py` before compiling the
 kernel, indexing every present letter and digit. New files, replaced contents,
 changed strip counts and removed files need no manual Rust registration.
@@ -49,8 +49,8 @@ no strip-count byte is stored.
 
 ## Shared flipped glyphs
 
-`9` uses `6.bin`, rotated 180 degrees. `d` uses `b.bin`, mirrored left-to-right. `q` likewise mirrors `p.bin`.
-Do not store `9.bin`, `d.bin` or `q.bin`: these names are aliases, so separate files with
+`9` uses `6.bin`, rotated 180 degrees. `d` uses `b.bin`, mirrored left-to-right. `q` likewise mirrors `p.bin`. `u` uses `n.bin`, rotated 180 degrees.
+Do not store `9.bin`, `d.bin`, `q.bin` or `u.bin`: these names are aliases, so separate files with
 those names are not embedded. If the canonical source is missing, the alias is
 missing too. Changes to the source automatically affect its alias on rebuild.
 

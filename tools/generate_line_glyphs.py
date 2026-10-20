@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CHARACTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz'
-ALIASES = {'9': ('6', 'Rotate180'), 'd': ('b', 'MirrorX'), 'q': ('p', 'MirrorX')}
+ALIASES = {'9': ('6', 'Rotate180'), 'd': ('b', 'MirrorX'), 'q': ('p', 'MirrorX'), 'u': ('n', 'Rotate180')}
 
 def identifier(ch):
     return f'BINARY_{ord(ch):04X}'
