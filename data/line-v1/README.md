@@ -26,11 +26,16 @@ There is no byte order dependency because every field fits in one byte.
 
 ## Adding glyphs to the demo
 
-Place a file named `A.bin`–`Z.bin`, `0.bin`–`8.bin`, or `a.bin`–`z.bin` (except `d.bin`, `q.bin` and `u.bin`), in this directory, then run `make iso`
-from TRUEOS. The build runs `tools/generate_line_glyphs.py` before compiling the
-kernel, indexing every present letter, digit and supported symbol. New files, replaced contents,
-changed strip counts and removed files need no manual Rust registration.
-Invalid data stops the build with the filename and byte offset.
+Use one filename scheme: `uXXXX.bin`, with lowercase `u` and uppercase hex,
+padded to at least four digits. For example, A is `u0041.bin`, a is `u0061.bin`,
+@ is `u0040.bin`, % is `u0025.bin`, and $ is `u0024.bin`.
+Character filenames such as `A.bin` are not supported.
+
+Run `make iso` from TRUEOS after placing or updating files here. The build runs
+`tools/generate_line_glyphs.py` before compiling the kernel. New files, replaced
+contents, changed strip counts and removed files need no manual registration.
+Invalid names or data stop the build with the offending filename.
+The filename identifies the Unicode scalar; the compact binary content is unchanged.
 
 The UI4 preview reserves six rows: A–M, N–Z, 0–9, a–m, n–z, then @ % $. Missing files leave
 empty cells. Files are embedded at build time; adding a file does not change a
@@ -49,8 +54,8 @@ no strip-count byte is stored.
 
 ## Shared flipped glyphs
 
-`9` uses `6.bin`, rotated 180 degrees. `d` uses `b.bin`, mirrored left-to-right. `q` likewise mirrors `p.bin`. `u` uses `n.bin`, rotated 180 degrees.
-Do not store `9.bin`, `d.bin`, `q.bin` or `u.bin`: these names are aliases, so separate files with
+`9` uses `u0036.bin`, rotated 180 degrees. `d` uses `u0062.bin`, mirrored left-to-right. `q` likewise mirrors `u0070.bin`. `u` uses `u006E.bin`, rotated 180 degrees.
+Do not store `u0039.bin`, `u0064.bin`, `u0071.bin` or `u0075.bin`: these names are aliases, so separate files with
 those names are not embedded. If the canonical source is missing, the alias is
 missing too. Changes to the source automatically affect its alias on rebuild.
 
@@ -61,5 +66,5 @@ The original point slices and boundary tags are shared. No transformed point
 array or second binary is stored; Strip::point/iter_points and adjacency_vertex
 apply the transform when consumed. The public points slice is canonical data.
 
-The symbol row reads `@.bin`, `%.bin` and `$.bin` from this directory. Missing
+The symbol row reads `u0040.bin`, `u0025.bin` and `u0024.bin` from this directory. Missing
 symbols stay blank and are picked up automatically by the next `make iso`.
