@@ -93,6 +93,8 @@ pub const GLYPH_CHARACTERS: &[char] = &[
     '\u{7B}',
     '\u{7D}',
     '\u{7E}',
+    '\u{A5}',
+    '\u{A6}',
     '\u{A7}',
     '\u{AB}',
     '\u{AD}',
@@ -110,6 +112,8 @@ pub const GLYPH_CHARACTERS: &[char] = &[
     '\u{BF}',
     '\u{C4}',
     '\u{C7}',
+    '\u{CE}',
+    '\u{D0}',
     '\u{D2}',
     '\u{D4}',
     '\u{D5}',
@@ -137,8 +141,17 @@ pub const GLYPH_CHARACTERS: &[char] = &[
     '\u{15F0}',
     '\u{2017}',
     '\u{203C}',
+    '\u{2190}',
+    '\u{2191}',
+    '\u{2192}',
+    '\u{2193}',
     '\u{21DD}',
+    '\u{2302}',
     '\u{239D}',
+    '\u{25B2}',
+    '\u{25BA}',
+    '\u{25BC}',
+    '\u{25C4}',
     '\u{25C7}',
     '\u{2630}',
     '\u{FF2E}',
@@ -226,6 +239,8 @@ const BINARY_0079: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!
 const BINARY_007A: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u007A.bin")) }>(include_bytes!("../data/line-v1/u007A.bin"));
 const BINARY_007B: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u007B.bin")) }>(include_bytes!("../data/line-v1/u007B.bin"));
 const BINARY_007E: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u007E.bin")) }>(include_bytes!("../data/line-v1/u007E.bin"));
+const BINARY_00A5: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u00A5.bin")) }>(include_bytes!("../data/line-v1/u00A5.bin"));
+const BINARY_00A6: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u00A6.bin")) }>(include_bytes!("../data/line-v1/u00A6.bin"));
 const BINARY_00A7: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u00A7.bin")) }>(include_bytes!("../data/line-v1/u00A7.bin"));
 const BINARY_00AB: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u00AB.bin")) }>(include_bytes!("../data/line-v1/u00AB.bin"));
 const BINARY_00AD: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u00AD.bin")) }>(include_bytes!("../data/line-v1/u00AD.bin"));
@@ -241,6 +256,8 @@ const BINARY_00B9: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!
 const BINARY_00BE: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u00BE.bin")) }>(include_bytes!("../data/line-v1/u00BE.bin"));
 const BINARY_00C4: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u00C4.bin")) }>(include_bytes!("../data/line-v1/u00C4.bin"));
 const BINARY_00C7: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u00C7.bin")) }>(include_bytes!("../data/line-v1/u00C7.bin"));
+const BINARY_00CE: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u00CE.bin")) }>(include_bytes!("../data/line-v1/u00CE.bin"));
+const BINARY_00D0: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u00D0.bin")) }>(include_bytes!("../data/line-v1/u00D0.bin"));
 const BINARY_00D2: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u00D2.bin")) }>(include_bytes!("../data/line-v1/u00D2.bin"));
 const BINARY_00D4: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u00D4.bin")) }>(include_bytes!("../data/line-v1/u00D4.bin"));
 const BINARY_00D5: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u00D5.bin")) }>(include_bytes!("../data/line-v1/u00D5.bin"));
@@ -268,8 +285,11 @@ const BINARY_0192: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!
 const BINARY_15F0: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u15F0.bin")) }>(include_bytes!("../data/line-v1/u15F0.bin"));
 const BINARY_2017: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u2017.bin")) }>(include_bytes!("../data/line-v1/u2017.bin"));
 const BINARY_203C: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u203C.bin")) }>(include_bytes!("../data/line-v1/u203C.bin"));
+const BINARY_2192: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u2192.bin")) }>(include_bytes!("../data/line-v1/u2192.bin"));
 const BINARY_21DD: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u21DD.bin")) }>(include_bytes!("../data/line-v1/u21DD.bin"));
+const BINARY_2302: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u2302.bin")) }>(include_bytes!("../data/line-v1/u2302.bin"));
 const BINARY_239D: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u239D.bin")) }>(include_bytes!("../data/line-v1/u239D.bin"));
+const BINARY_25B2: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u25B2.bin")) }>(include_bytes!("../data/line-v1/u25B2.bin"));
 const BINARY_25C7: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u25C7.bin")) }>(include_bytes!("../data/line-v1/u25C7.bin"));
 const BINARY_2630: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/u2630.bin")) }>(include_bytes!("../data/line-v1/u2630.bin"));
 const BINARY_FF2E: &[Strip] = &decode_glyph::<{ glyph_strip_count(include_bytes!("../data/line-v1/uFF2E.bin")) }>(include_bytes!("../data/line-v1/uFF2E.bin"));
@@ -286,6 +306,12 @@ const BINARY_007D: &[Strip] = &transformed_glyph::<{ BINARY_007B.len() }>(BINARY
 const BINARY_005C: &[Strip] = &transformed_glyph::<{ BINARY_002F.len() }>(BINARY_002F, GlyphTransform::MirrorX);
 const BINARY_00BF: &[Strip] = &transformed_glyph::<{ BINARY_003F.len() }>(BINARY_003F, GlyphTransform::Rotate180);
 const BINARY_00BB: &[Strip] = &transformed_glyph::<{ BINARY_00AB.len() }>(BINARY_00AB, GlyphTransform::MirrorX);
+const BINARY_2190: &[Strip] = &transformed_glyph::<{ BINARY_2192.len() }>(BINARY_2192, GlyphTransform::MirrorX);
+const BINARY_2191: &[Strip] = &transformed_glyph::<{ BINARY_2192.len() }>(BINARY_2192, GlyphTransform::Rotate270);
+const BINARY_2193: &[Strip] = &transformed_glyph::<{ BINARY_2192.len() }>(BINARY_2192, GlyphTransform::Rotate90);
+const BINARY_25BA: &[Strip] = &transformed_glyph::<{ BINARY_25B2.len() }>(BINARY_25B2, GlyphTransform::Rotate90);
+const BINARY_25C4: &[Strip] = &transformed_glyph::<{ BINARY_25B2.len() }>(BINARY_25B2, GlyphTransform::Rotate270);
+const BINARY_25BC: &[Strip] = &transformed_glyph::<{ BINARY_25B2.len() }>(BINARY_25B2, GlyphTransform::Rotate180);
 const fn binary_glyph_strips(character: char) -> Option<&'static [Strip]> {
     match character {
         '\u{21}' => Some(BINARY_0021),
@@ -370,6 +396,8 @@ const fn binary_glyph_strips(character: char) -> Option<&'static [Strip]> {
         '\u{7A}' => Some(BINARY_007A),
         '\u{7B}' => Some(BINARY_007B),
         '\u{7E}' => Some(BINARY_007E),
+        '\u{A5}' => Some(BINARY_00A5),
+        '\u{A6}' => Some(BINARY_00A6),
         '\u{A7}' => Some(BINARY_00A7),
         '\u{AB}' => Some(BINARY_00AB),
         '\u{AD}' => Some(BINARY_00AD),
@@ -385,6 +413,8 @@ const fn binary_glyph_strips(character: char) -> Option<&'static [Strip]> {
         '\u{BE}' => Some(BINARY_00BE),
         '\u{C4}' => Some(BINARY_00C4),
         '\u{C7}' => Some(BINARY_00C7),
+        '\u{CE}' => Some(BINARY_00CE),
+        '\u{D0}' => Some(BINARY_00D0),
         '\u{D2}' => Some(BINARY_00D2),
         '\u{D4}' => Some(BINARY_00D4),
         '\u{D5}' => Some(BINARY_00D5),
@@ -412,8 +442,11 @@ const fn binary_glyph_strips(character: char) -> Option<&'static [Strip]> {
         '\u{15F0}' => Some(BINARY_15F0),
         '\u{2017}' => Some(BINARY_2017),
         '\u{203C}' => Some(BINARY_203C),
+        '\u{2192}' => Some(BINARY_2192),
         '\u{21DD}' => Some(BINARY_21DD),
+        '\u{2302}' => Some(BINARY_2302),
         '\u{239D}' => Some(BINARY_239D),
+        '\u{25B2}' => Some(BINARY_25B2),
         '\u{25C7}' => Some(BINARY_25C7),
         '\u{2630}' => Some(BINARY_2630),
         '\u{FF2E}' => Some(BINARY_FF2E),
@@ -430,6 +463,12 @@ const fn binary_glyph_strips(character: char) -> Option<&'static [Strip]> {
         '\u{5C}' => Some(BINARY_005C),
         '\u{BF}' => Some(BINARY_00BF),
         '\u{BB}' => Some(BINARY_00BB),
+        '\u{2190}' => Some(BINARY_2190),
+        '\u{2191}' => Some(BINARY_2191),
+        '\u{2193}' => Some(BINARY_2193),
+        '\u{25BA}' => Some(BINARY_25BA),
+        '\u{25C4}' => Some(BINARY_25C4),
+        '\u{25BC}' => Some(BINARY_25BC),
         _ => None,
     }
 }

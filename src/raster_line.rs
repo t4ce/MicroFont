@@ -34,18 +34,24 @@ pub struct Strip {
     pub end: Boundary,
     flip_x_sum: u8,
     flip_y_sum: u8,
+    swap_xy: bool,
+    offset_x: i8,
+    offset_y: i8,
 }
 impl Strip {
     pub const fn new(points: &'static [Point], start: Boundary, end: Boundary) -> Self {
         assert!(points.len() >= 2);
-        Self { points, start, end, flip_x_sum: u8::MAX, flip_y_sum: u8::MAX }
+        Self { points, start, end, flip_x_sum: u8::MAX, flip_y_sum: u8::MAX,
+            swap_xy: false, offset_x: 0, offset_y: 0 }
     }
     pub const fn point(self, index: usize) -> Option<Point> {
         if index >= self.points.len() { return None; }
         let p = self.points[index];
-        Some(Point::new(
-            if self.flip_x_sum == u8::MAX { p.x() } else { self.flip_x_sum - p.x() },
-            if self.flip_y_sum == u8::MAX { p.y() } else { self.flip_y_sum - p.y() }))
+        let (x, y) = if self.swap_xy { (p.y(), p.x()) } else { (p.x(), p.y()) };
+        let x = if self.flip_x_sum == u8::MAX { x } else { self.flip_x_sum - x };
+        let y = if self.flip_y_sum == u8::MAX { y } else { self.flip_y_sum - y };
+        Some(Point::new((x as i16 + self.offset_x as i16) as u8,
+                        (y as i16 + self.offset_y as i16) as u8))
     }
     pub fn iter_points(self) -> impl ExactSizeIterator<Item = Point> {
         (0..self.points.len()).map(move |i| self.point(i).unwrap())
@@ -68,7 +74,7 @@ impl Strip {
 
 /// Aliases only change coordinate interpretation; point bytes and tags are shared.
 #[derive(Clone, Copy)]
-pub enum GlyphTransform { MirrorX, MirrorY, Rotate180 }
+pub enum GlyphTransform { MirrorX, MirrorY, Rotate90, Rotate180, Rotate270 }
 
 pub const fn transformed_glyph<const N: usize>(source: &[Strip], transform: GlyphTransform) -> [Strip; N] {
     assert!(N > 0 && source.len() == N);
@@ -79,7 +85,8 @@ pub const fn transformed_glyph<const N: usize>(source: &[Strip], transform: Glyp
     let mut i = 0;
     while i < N {
         // Generated aliases always reference canonical bins, never other aliases.
-        assert!(source[i].flip_x_sum == u8::MAX && source[i].flip_y_sum == u8::MAX);
+        assert!(source[i].flip_x_sum == u8::MAX && source[i].flip_y_sum == u8::MAX
+            && !source[i].swap_xy && source[i].offset_x == 0 && source[i].offset_y == 0);
         let mut j = 0;
         while j < source[i].points.len() {
             let p = source[i].points[j];
@@ -91,17 +98,38 @@ pub const fn transformed_glyph<const N: usize>(source: &[Strip], transform: Glyp
         }
         i += 1;
     }
+    // Quarter turns preserve distances and the occupied centre where it fits
+    // on lattice sites. Square glyphs keep their exact original bounds.
+    // Clamp placement to the non-square 6x11 cell; no point bytes are copied.
+    let quarter_turn = matches!(transform, GlyphTransform::Rotate90 | GlyphTransform::Rotate270);
+    let (offset_x, offset_y) = if quarter_turn {
+        assert!(max_y - min_y < 6, "quarter-turn exceeds 6x11 grid");
+        let mut left = (min_x as i16 + max_x as i16 - (max_y - min_y) as i16) / 2;
+        let mut top = (min_y as i16 + max_y as i16 - (max_x - min_x) as i16) / 2;
+        let rightmost = (5 - (max_y - min_y)) as i16;
+        let bottommost = (10 - (max_x - min_x)) as i16;
+        if left < 0 { left = 0; }
+        if left > rightmost { left = rightmost; }
+        if top < 0 { top = 0; }
+        if top > bottommost { top = bottommost; }
+        (left as i8 - min_y as i8, top as i8 - min_x as i8)
+    } else { (0, 0) };
     let mut result = [source[0]; N];
     i = 0;
     while i < N {
         result[i] = source[i];
+        result[i].swap_xy = quarter_turn;
+        result[i].offset_x = offset_x;
+        result[i].offset_y = offset_y;
         result[i].flip_x_sum = match transform {
-            GlyphTransform::MirrorY => u8::MAX,
+            GlyphTransform::MirrorY | GlyphTransform::Rotate270 => u8::MAX,
             GlyphTransform::MirrorX | GlyphTransform::Rotate180 => min_x + max_x,
+            GlyphTransform::Rotate90 => min_y + max_y,
         };
         result[i].flip_y_sum = match transform {
-            GlyphTransform::MirrorX => u8::MAX,
+            GlyphTransform::MirrorX | GlyphTransform::Rotate90 => u8::MAX,
             GlyphTransform::MirrorY | GlyphTransform::Rotate180 => min_y + max_y,
+            GlyphTransform::Rotate270 => min_x + max_x,
         };
         i += 1;
     }

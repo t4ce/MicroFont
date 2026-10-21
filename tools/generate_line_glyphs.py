@@ -13,6 +13,8 @@ ALIASES = {
     ')': ('(', 'MirrorX'), '>': ('<', 'MirrorX'),
     ']': ('[', 'MirrorX'), '}': ('{', 'MirrorX'),
     '\\': ('/', 'MirrorX'), '¿': ('?', 'Rotate180'), '»': ('«', 'MirrorX'),
+    '←': ('→', 'MirrorX'), '↑': ('→', 'Rotate270'), '↓': ('→', 'Rotate90'),
+    '►': ('▲', 'Rotate90'), '◄': ('▲', 'Rotate270'), '▼': ('▲', 'Rotate180'),
 }
 
 def identifier(ch):
