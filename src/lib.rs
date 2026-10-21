@@ -10,6 +10,8 @@ mod basic;
 pub use basic::{BASIC_SYMBOLS, CONTROL_SYMBOLS, control_label_cells};
 mod cp850;
 pub use cp850::{CP850_SYMBOLS, FPIXELS, font_pixels, glyph_byte, glyph_character};
+#[path = "7seg.rs"]
+pub mod seven_segment;
 mod fontshape;
 pub use fontshape::FontShape;
 #[cfg(feature = "han")]
@@ -62,7 +64,7 @@ pub fn special_cells(character: char) -> Option<&'static [char]> {
 }
 
 // Additional 6×11 UI symbols; top-left at bit 65.
-const UI_SYMBOLS: [(char, u128); 36] = [
+const UI_SYMBOLS: [(char, u128); 26] = [
     ('ᗰ', 0x00033cedb61861000),
     ('→', 0x00000102fc2100000),
     ('⇝', 0x00000112b42100000),
@@ -89,16 +91,7 @@ const UI_SYMBOLS: [(char, u128); 36] = [
     ('🞃', 0x0003e708000000000),
     ('🪦', 0x00722abeaa28be000),
     ('🯀', 0x00033b52312b73000),
-    ('🯰', 0x007228a20228a2700),
-    ('🯱', 0x00002082002082000),
-    ('🯲', 0x00702082720820700),
-    ('🯳', 0x00702082702082700),
-    ('🯴', 0x000228a2702082000),
-    ('🯵', 0x00720820702082700),
-    ('🯶', 0x007208207228a2700),
-    ('🯷', 0x00702082002082000),
-    ('🯸', 0x007228a27228a2700),
-    ('🯹', 0x007228a2702082700),
+
 ];
 
 // Canonical complete-cell symbols, shared by Unicode lookup and the CP850 view.
@@ -111,7 +104,7 @@ const fn symbol_pixels(character: char) -> Option<u128> {
     } else if code >= 0x2580 && code <= 0x259f {
         Some(BLOCK_SYMBOLS[(code - 0x2580) as usize].1)
     } else {
-        None
+        seven_segment::glyph_mask(character)
     }
 }
 
