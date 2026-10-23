@@ -1,87 +1,21 @@
-//! One-cell GUI subset. Font data is OFL-1.1; decoder code is MIT licensed.
-//!
-//! Records preserve exact source pixels. Most are 35-bit 5x7 literals padded
-//! into the 6x11 cell; punctuation can use a full 66-bit literal. Shared shapes
-//! refer directly to a literal and optionally toggle one or two pixels. There
-//! are no reference chains, runtime allocations, or expanded glyph tables.
+//! One-cell GUI subset identities. OFL-1.1 bitmap data lives in the glyph bundle.
 
 #[path = "gui_han_data.rs"]
 mod data;
 
 pub const GUI_HAN_COUNT: usize = data::CODES.len();
-pub const GUI_HAN_TABLE_BYTES: usize =
-    data::CODES.len() * 2 + data::CHECKPOINTS.len() * 2 + data::DATA.len();
+/// Bitmap payload bytes for this subset, excluding the shared bundle index.
+pub const GUI_HAN_TABLE_BYTES: usize = GUI_HAN_COUNT * 16;
 
-/// Iterate the existing subset without embedding a second codepoint table.
+/// Iterate the existing subset without expanding its bitmap records.
 pub fn characters() -> impl ExactSizeIterator<Item = char> {
     data::CODES.iter().map(|&cp| char::from_u32(cp as u32).unwrap())
 }
 
-fn read_u16(at: usize) -> usize {
-    u16::from_le_bytes([data::DATA[at], data::DATA[at + 1]]) as usize
-}
-
-fn record_len(tag: u8) -> usize {
-    match tag {
-        0..=7 => 5,
-        8..=11 => 9,
-        32 | 128..=191 => 3,
-        192..=255 => 4,
-        _ => unreachable!("invalid generated glyph record"),
-    }
-}
-
-fn literal(at: usize) -> u128 {
-    let tag = data::DATA[at];
-    if tag < 8 {
-        let packed = ((tag as u64) << 32)
-            | u32::from_le_bytes([
-                data::DATA[at + 1],
-                data::DATA[at + 2],
-                data::DATA[at + 3],
-                data::DATA[at + 4],
-            ]) as u64;
-        let mut mask = 0u128;
-        for row in 0..7 {
-            mask |= (((packed >> (row * 5)) & 31) as u128) << (12 + row * 6 + 1);
-        }
-        mask
-    } else {
-        debug_assert!((8..12).contains(&tag), "patch must reference a literal");
-        let mut mask = ((tag & 3) as u128) << 64;
-        for byte in 0..8 {
-            mask |= (data::DATA[at + 1 + byte] as u128) << (byte * 8);
-        }
-        mask
-    }
-}
-
-fn decode(at: usize) -> u128 {
-    let tag = data::DATA[at];
-    match tag {
-        0..=11 => literal(at),
-        32 => literal(read_u16(at + 1)),
-        128..=191 => literal(read_u16(at + 1)) ^ (1u128 << (tag & 63)),
-        192..=255 => {
-            literal(read_u16(at + 2)) ^ (1u128 << (tag & 63)) ^ (1u128 << data::DATA[at + 1])
-        }
-        _ => unreachable!("invalid generated glyph record"),
-    }
-}
-
 pub fn glyph_cell_pixels(character: char) -> Option<u128> {
     let cp = u16::try_from(character as u32).ok()?;
-    // Keep ordinary ASCII/CP850 stamping out of the subset's binary search.
-    if cp < data::CODES[0] || cp > data::CODES[GUI_HAN_COUNT - 1] {
-        return None;
-    }
-    let index = data::CODES.binary_search(&cp).ok()?;
-    // A checkpoint every 16 glyphs bounds the scan to at most 15 tiny records.
-    let mut at = data::CHECKPOINTS[index / 16] as usize;
-    for _ in 0..index % 16 {
-        at += record_len(data::DATA[at]);
-    }
-    Some(decode(at))
+    data::CODES.binary_search(&cp).ok()?;
+    crate::bundle::bitmap(character)
 }
 
 #[cfg(test)]
@@ -89,27 +23,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn all_records_are_sorted_bounded_and_reference_only_earlier_literals() {
+    fn identities_are_sorted_and_each_resolves_to_a_complete_mask() {
         assert_eq!(GUI_HAN_COUNT, 512);
-        assert!(GUI_HAN_TABLE_BYTES < 4096);
         assert!(data::CODES.windows(2).all(|pair| pair[0] < pair[1]));
-        let mut at = 0;
-        for (index, &cp) in data::CODES.iter().enumerate() {
-            if index % 16 == 0 {
-                assert_eq!(data::CHECKPOINTS[index / 16] as usize, at);
-            }
-            let tag = data::DATA[at];
-            if tag >= 32 {
-                let base = read_u16(at + if tag < 192 { 1 } else { 2 });
-                assert!(base < at);
-                assert!(data::DATA[base] < 12);
-            }
-            let mask = decode(at);
+        for character in characters() {
+            let mask = glyph_cell_pixels(character).unwrap();
             assert_eq!(mask >> 66, 0);
-            assert_eq!(glyph_cell_pixels(char::from_u32(cp as u32).unwrap()), Some(mask));
-            at += record_len(tag);
         }
-        assert_eq!(at, data::DATA.len());
     }
 
     #[test]

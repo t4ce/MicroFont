@@ -4,7 +4,9 @@
 No resampling or clipping: every source pixel must fit the 6x11 cell. The
 upstream baseline is placed at row 9, aligning 7-pixel Han with Latin capitals.
 This script needs only Python's standard library; --preview additionally uses
-Pillow. Generated glyph data is OFL-1.1; the generator itself is MIT licensed.
+Pillow. Masks are the first value in each shared binary source file; Rust
+output contains identities only. Generated glyph data is OFL-1.1; the generator
+itself is MIT licensed.
 """
 
 import argparse
@@ -21,7 +23,9 @@ SOURCE_URL = (
     "Sources/XiuZhenXiangSuTi-8.bdf"
 )
 COUNT = 512
-STRIDE = 16
+SOURCE_HEADER_BYTES = 20
+BITMAP_FLAG = 1
+HAN_FLAG = 2
 
 
 def inventory(path):
@@ -74,105 +78,32 @@ def read_masks(path, codes):
     return masks
 
 
-def narrow_literal(mask):
-    """Pack the usual 5x7 drawing, dropping its empty side and vertical padding."""
-    packed, expanded = 0, 0
-    for row in range(7):
-        pixels = (mask >> (12 + row * 6 + 1)) & 31
-        packed |= pixels << (row * 5)
-        expanded |= pixels << (12 + row * 6 + 1)
-    if expanded != mask:
-        return None
-    return bytes([packed >> 32]) + (packed & 0xffffffff).to_bytes(4, "little")
-
-
-def literal(mask):
-    narrow = narrow_literal(mask)
-    if narrow is not None:
-        return narrow
-    # Full 66-bit literal for punctuation that uses other rows or columns.
-    return bytes([8 | (mask >> 64)]) + (mask & ((1 << 64) - 1)).to_bytes(8, "little")
-
-
-def decode_literal(data, at):
-    tag = data[at]
-    if tag < 8:
-        packed = tag << 32 | int.from_bytes(data[at + 1:at + 5], "little")
-        return sum(((packed >> (row * 5)) & 31) << (12 + row * 6 + 1)
-                   for row in range(7))
-    if 8 <= tag < 12:
-        return (tag & 3) << 64 | int.from_bytes(data[at + 1:at + 9], "little")
-    raise ValueError("patch must reference a literal, never another patch")
-
-
-def record_len(tag):
-    if tag < 8:
-        return 5
-    if tag < 12:
-        return 9
-    if tag == 32 or 128 <= tag < 192:
-        return 3
-    if tag >= 192:
-        return 4
-    raise ValueError("invalid glyph record")
-
-
-def decode(data, at):
-    tag = data[at]
-    if tag < 12:
-        return decode_literal(data, at)
-    if tag == 32:
-        return decode_literal(data, int.from_bytes(data[at + 1:at + 3], "little"))
-    if tag < 192:
-        base = int.from_bytes(data[at + 1:at + 3], "little")
-        return decode_literal(data, base) ^ (1 << (tag & 63))
-    base = int.from_bytes(data[at + 2:at + 4], "little")
-    return decode_literal(data, base) ^ (1 << (tag & 63)) ^ (1 << data[at + 1])
-
-
-def encode(codes, masks):
-    data = bytearray()
-    checkpoints = []
-    roots = []
-    statistics = {"literal": 0, "same": 0, "one_pixel": 0, "two_pixels": 0}
-    for index, cp in enumerate(codes):
-        if index % STRIDE == 0:
-            checkpoints.append(len(data))
+def glyph_sources(codes, masks, data_dir):
+    """Keep each bitmap first in its shared source file, preserving later raster work."""
+    records = {}
+    for cp in codes:
+        path = data_dir / f"u{cp:04X}.bin"
         mask = masks[cp]
-        best = min(((mask ^ root).bit_count(), offset, root)
-                   for root, offset in roots) if roots else None
-        raw = literal(mask)
-        if best is not None and best[0] <= 2 and (mask ^ best[2]).bit_length() <= 64:
-            count, offset, root = best
-            diff = mask ^ root
-            positions = [bit for bit in range(64) if diff >> bit & 1]
-            if count == 0:
-                record = bytes([32]) + struct.pack("<H", offset)
-                kind = "same"
-            elif count == 1:
-                record = bytes([128 | positions[0]]) + struct.pack("<H", offset)
-                kind = "one_pixel"
-            else:
-                record = bytes([192 | positions[0], positions[1]]) + struct.pack("<H", offset)
-                kind = "two_pixels"
-            if len(record) < len(raw):
-                data.extend(record)
-                statistics[kind] += 1
-                continue
-        roots.append((mask, len(data)))
-        data.extend(raw)
-        statistics["literal"] += 1
-    if len(data) > 65535:
-        raise ValueError("glyph data exceeds u16 reference budget")
-    at = 0
-    for index, cp in enumerate(codes):
-        if index % STRIDE == 0 and checkpoints[index // STRIDE] != at:
-            raise ValueError("incorrect checkpoint")
-        if decode(data, at) != masks[cp]:
-            raise ValueError(f"round trip changed pixels for U+{cp:04X}")
-        at += record_len(data[at])
-    assert at == len(data)
-    return data, checkpoints, statistics
+        if not (0 <= mask < 1 << 66):
+            raise ValueError(f"U+{cp:04X}: bitmap exceeds the 6x11 source cell")
+        previous = path.read_bytes() if path.exists() else bytes(SOURCE_HEADER_BYTES)
+        if len(previous) < SOURCE_HEADER_BYTES or previous[18:20] != b"\x00\x00":
+            raise ValueError(f"{path}: invalid mask-first glyph source header")
+        if previous[16] & ~(BITMAP_FLAG | HAN_FLAG):
+            raise ValueError(f"{path}: unknown glyph source flags")
+        header = bytes([previous[16] | BITMAP_FLAG | HAN_FLAG, previous[17], 0, 0])
+        records[path] = mask.to_bytes(16, "little") + header + previous[SOURCE_HEADER_BYTES:]
+    return records
+
+
+def identity_source(codes):
+    return (
+        "// Generated by tools/mint_gui_han.py; glyph identities only.\n"
+        "// Bitmap data: SIL OFL-1.1; see OFL-cjk.txt and NOTICE-cjk.md.\n"
+        "// Copyright (c) 2026 yzdnn; Copyright (c) 2000-2023 Num Kadoma.\n"
+        f"// Source revision: {REVISION}; all source pixels preserved in glyph bins.\n\n"
+        + rust_array("CODES", "u16", codes, 4, 12)
+    )
 
 
 def rust_array(name, kind, values, digits, columns):
@@ -207,39 +138,39 @@ def preview(path, codes, masks, required):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("bdf", type=Path, help=f"download pinned BDF: {SOURCE_URL}")
-    parser.add_argument("--out", type=Path, default=ROOT / "src/gui_han_data.rs")
-    parser.add_argument("--check", action="store_true", help="verify checked-in data without writing")
+    parser.add_argument("--out", type=Path, default=ROOT / "src/gui_han_data.rs",
+                        help="Rust identity table output; contains no bitmap values")
+    parser.add_argument("--data-dir", type=Path, default=ROOT / "data/line-v1",
+                        help="shared mask-first glyph source directory")
+    parser.add_argument("--check", action="store_true", help="verify checked-in identities and bins without writing")
     parser.add_argument("--preview", type=Path)
     parser.add_argument("--oracle", type=Path, help="write independent source masks for Rust host validation")
     args = parser.parse_args()
     codes, required = selection()
     masks = read_masks(args.bdf, set(codes))
-    data, checkpoints, statistics = encode(codes, masks)
-    output = (
-        "// Generated by tools/mint_gui_han.py; do not edit by hand.\n"
-        "// Glyph data: SIL OFL-1.1; see OFL-cjk.txt and NOTICE-cjk.md.\n"
-        "// Copyright (c) 2026 yzdnn; Copyright (c) 2000-2023 Num Kadoma.\n"
-        f"// Source revision: {REVISION}; all source pixels preserved.\n\n"
-        + rust_array("CODES", "u16", codes, 4, 12)
-        + rust_array("CHECKPOINTS", "u16", checkpoints, 4, 12)
-        + rust_array("DATA", "u8", data, 2, 20)
-    )
+    records = glyph_sources(codes, masks, args.data_dir)
+    output = identity_source(codes)
     if args.check:
         if args.out.read_text() != output:
-            raise ValueError("checked-in glyph tables do not match the source and selection")
+            raise ValueError("checked-in glyph identities do not match the source and selection")
+        for path, record in records.items():
+            if not path.exists() or path.read_bytes() != record:
+                raise ValueError(f"{path}: checked-in glyph source differs from the pinned BDF")
     else:
+        args.data_dir.mkdir(parents=True, exist_ok=True)
+        for path, record in records.items():
+            path.write_bytes(record)
         args.out.write_text(output)
     if args.preview:
         preview(args.preview, codes, masks, required)
     if args.oracle:
         args.oracle.write_bytes(b"".join(struct.pack("<I", cp) + masks[cp].to_bytes(16, "little")
                                          for cp in codes))
-    size = len(data) + 2 * len(codes) + 2 * len(checkpoints)
     print(json.dumps({"glyphs": len(codes), "required_gui_glyphs": len(required),
                       "common_fillers": len(codes) - len(required),
                       "distinct_bitmaps": len(set(masks.values())),
-                      "table_bytes": size, "records": statistics,
-                      "unshared_literal_bytes": sum(len(literal(masks[cp])) for cp in codes)}, indent=2))
+                      "bitmap_bytes": 16 * len(codes),
+                      "source_bytes": sum(map(len, records.values()))}, indent=2))
 
 
 if __name__ == "__main__":

@@ -38,6 +38,13 @@ bits 0..2 (0–5), y in bits 3..6 (0–10); bit 7 is reserved. `glyph_strips` re
 any number of strokes per override. A `Strip` holds at least two real points and
 separate `start` / `end` boundary tags (`End` or `Junction`).
 
+Lowercase accented line glyphs share six private binary toppers and their
+existing base strokes. `glyph_strips` returns an iterable, indexable
+`GlyphStrips` view; composition does not copy point bytes or create combined
+strip arrays. See [lowercase toppers](data/line-v1/lowercase-toppers/README.md)
+for the full CP850/Unicode grid and the six editable assets. Bitmap masks and
+uppercase glyphs are independent of these lowercase compositions.
+
 The demo expands each strip to `[adj_start, real_points..., adj_end]` and
 submits a separate native `LineStripAdj` draw. Adjacency positions duplicate the
 boundary point; their z component carries `Junction=0` or `End=1`. Real vertices
@@ -98,15 +105,6 @@ blocks fill all 66 pixels, so adjacent cells join without gaps.
 at bit 65. The legacy `glyph_pixels` mask uses bit 63 and omits the final two
 pixels. Byte/ARGB slot identities remain unchanged, with their box and block
 masks now derived from the canonical tables.
-
-With the `han` feature, Unicode text includes **MicroFont GUI Han**, a curated 512-character Chinese GUI
-subset: 308 Han characters for menus, file actions, settings and error messages,
-19 punctuation marks, and 185 common-character fillers. Each occupies exactly
-one 6×11 cell, preserving the source pixels. Its packed lookup and glyph tables
-use 3,627 bytes; `GUI_HAN_COUNT` and `GUI_HAN_TABLE_BYTES` expose those budgets.
-Coverage is tailored to controlled GUI wording; arbitrary names can require
-characters outside the set. See the [atlas](docs/gui-han-atlas.png) and
-[source, license and regeneration notes](NOTICE-cjk.md).
 
 The keyboard `⌨` and map `🗺` icons in `SPECIAL` use two and three cells
 respectively. `measure_text` and Unicode stamping account for these widths;

@@ -1,4 +1,4 @@
-//! Raster seeds and small-glyph quads in the 6×11 source cell.
+//! Borrowed line/quad raster records in the 6×11 source cell.
 //! Coordinates start at the top left; right and bottom edges are exclusive.
 
 /// A filled rectangle in source-cell units, before renderer scaling.
@@ -15,180 +15,157 @@ pub struct BoxDrawQuad {
     pub vertices: [[f32; 2]; 4],
 }
 
-impl BoxDrawQuad {
-    const fn rectangle(quad: Quad) -> Self {
-        let [left, top] = quad.top_left;
-        let [right, bottom] = quad.bottom_right;
-        Self { vertices: [
-            [left as f32, top as f32], [right as f32, top as f32],
-            [right as f32, bottom as f32], [left as f32, bottom as f32],
-        ] }
+/// Borrowed packed float coordinates, decoded one quad at a time. This view
+/// needs neither aligned storage, native pointers in the file, nor allocation.
+#[derive(Clone, Copy, Debug)]
+pub struct BoxDrawQuads {
+    bytes: &'static [u8],
+}
+impl BoxDrawQuads {
+    fn new(bytes: &'static [u8]) -> Option<Self> {
+        if bytes.len() % 32 != 0 { return None; }
+        for value in bytes.chunks_exact(4) {
+            if !f32::from_le_bytes(value.try_into().ok()?).is_finite() { return None; }
+        }
+        Some(Self { bytes })
+    }
+    pub fn len(self) -> usize { self.bytes.len() / 32 }
+    pub fn is_empty(self) -> bool { self.bytes.is_empty() }
+    pub fn get(self, index: usize) -> Option<BoxDrawQuad> {
+        let start = index.checked_mul(32)?;
+        let bytes = self.bytes.get(start..start.checked_add(32)?)?;
+        let mut vertices = [[0.0; 2]; 4];
+        for (point, values) in vertices.iter_mut().zip(bytes.chunks_exact(8)) {
+            point[0] = f32::from_le_bytes(values[..4].try_into().ok()?);
+            point[1] = f32::from_le_bytes(values[4..].try_into().ok()?);
+        }
+        Some(BoxDrawQuad { vertices })
+    }
+    pub fn iter(self) -> impl ExactSizeIterator<Item = BoxDrawQuad> {
+        (0..self.len()).map(move |index| self.get(index).unwrap())
     }
 }
-
-/// Precomputed quads for one glyph. Unused array slots are private.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct QuadGlyph<const N: usize> {
-    pub(crate) quads: [Quad; N],
-    pub(crate) len: u8,
+impl IntoIterator for BoxDrawQuads {
+    type Item = BoxDrawQuad;
+    type IntoIter = BoxDrawQuadIter;
+    fn into_iter(self) -> Self::IntoIter { BoxDrawQuadIter { source: self, index: 0 } }
 }
-
-impl<const N: usize> QuadGlyph<N> {
-    pub(crate) const EMPTY: Self = Self {
-        quads: [Quad { top_left: [0, 0], bottom_right: [0, 0] }; N],
-        len: 0,
-    };
-
-    /// Only the filled quads, in generation order.
-    pub fn quads(&self) -> &[Quad] {
-        &self.quads[..self.len as usize]
+#[derive(Clone, Debug)]
+pub struct BoxDrawQuadIter { source: BoxDrawQuads, index: usize }
+impl Iterator for BoxDrawQuadIter {
+    type Item = BoxDrawQuad;
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = self.source.get(self.index)?;
+        self.index += 1;
+        Some(result)
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.source.len() - self.index;
+        (remaining, Some(remaining))
     }
 }
+impl ExactSizeIterator for BoxDrawQuadIter {}
 
-/// At most eight single-dot quads per Braille glyph.
-pub type BrailleGlyph = QuadGlyph<8>;
-/// All 256 Braille glyphs, populated at compile time alongside their pixel masks.
-/// No initialization, warm-up, allocation or geometry generation is needed.
-pub static BRAILLE_QUADS: [BrailleGlyph; 256] = crate::braille::DATA.quads;
-
-/// Borrow ready-to-use quads in 6×11 source coordinates.
-/// Blank Braille returns an empty slice; other characters return `None`.
-pub fn braille_quad_slice(character: char) -> Option<&'static [Quad]> {
-    if !('\u{2800}'..='\u{28ff}').contains(&character) {
-        return None;
+/// Integer rectangle view used by Block Elements and Braille.
+#[derive(Clone, Copy, Debug)]
+pub struct Quads { source: BoxDrawQuads }
+impl Quads {
+    fn new(source: BoxDrawQuads) -> Option<Self> {
+        for quad in source {
+            let [[left, top], [right, t], [r, bottom], [l, b]] = quad.vertices;
+            if left != l || top != t || right != r || bottom != b
+                || left < 0.0 || top < 0.0 || right > 6.0 || bottom > 11.0
+                || left >= right || top >= bottom
+                || [left, top, right, bottom].iter().any(|&v| v as u8 as f32 != v)
+            { return None; }
+        }
+        Some(Self { source })
     }
-    Some(BRAILLE_QUADS[character as usize - 0x2800].quads())
+    pub fn len(self) -> usize { self.source.len() }
+    pub fn is_empty(self) -> bool { self.source.is_empty() }
+    pub fn get(self, index: usize) -> Option<Quad> {
+        let quad = self.source.get(index)?;
+        Some(Quad { top_left: quad.vertices[0].map(|v| v as u8),
+            bottom_right: quad.vertices[2].map(|v| v as u8) })
+    }
+    pub fn iter(self) -> impl ExactSizeIterator<Item = Quad> {
+        (0..self.len()).map(move |index| self.get(index).unwrap())
+    }
 }
-
-/// Iterate the precomputed quads without allocation or pattern reconstruction.
-pub fn braille_quads(character: char) -> Option<impl Iterator<Item = Quad>> {
-    Some(braille_quad_slice(character)?.iter().copied())
+impl IntoIterator for Quads {
+    type Item = Quad;
+    type IntoIter = QuadIter;
+    fn into_iter(self) -> Self::IntoIter { QuadIter { source: self, index: 0 } }
 }
-
-/// Packed rectangles and glyph boundaries in their source table order.
-/// Glyph `i` uses `quads[offsets[i]..offsets[i + 1]]`.
-pub struct QuadRaster<const N: usize, const O: usize, Q = Quad> {
-    pub quads: [Q; N],
-    pub offsets: [u16; O],
+#[derive(Clone, Debug)]
+pub struct QuadIter { source: Quads, index: usize }
+impl Iterator for QuadIter {
+    type Item = Quad;
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = self.source.get(self.index)?;
+        self.index += 1;
+        Some(result)
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.source.len() - self.index;
+        (remaining, Some(remaining))
+    }
 }
+impl ExactSizeIterator for QuadIter {}
 
-pub type BlockRaster<const N: usize> = QuadRaster<N, 33>;
-pub type BoxDrawRaster<const N: usize> = QuadRaster<N, 129, BoxDrawQuad>;
-
-/// Number of rectangles in the exact packed cover of all 32 block masks.
-pub const BLOCK_QUAD_COUNT: usize = rasterize::<0, 33>(&crate::BLOCK_SYMBOLS).offsets[32] as usize;
-/// All blocks use the same compile-time cover and share one packed table.
-pub static BLOCK_QUADS: BlockRaster<BLOCK_QUAD_COUNT> = rasterize(&crate::BLOCK_SYMBOLS);
+/// Borrow any ready-to-use quad glyph from the installed binary bundle.
+pub fn glyph_quads(character: char) -> Option<BoxDrawQuads> {
+    let record = crate::bundle::record(character as u32)?;
+    if record.kind() != 2 { return None; }
+    BoxDrawQuads::new(record.raster())
+}
 
 /// Borrow exact filled rectangles for any Block Element; non-blocks return `None`.
-pub fn block_quad_slice(character: char) -> Option<&'static [Quad]> {
-    if !('\u{2580}'..='\u{259f}').contains(&character) {
-        return None;
+pub fn block_quad_slice(character: char) -> Option<Quads> {
+    if !('\u{2580}'..='\u{259f}').contains(&character) { return None; }
+    Quads::new(glyph_quads(character)?)
+}
+/// Iterate stored block rectangles, including shades, without allocation.
+pub fn block_quads(character: char) -> Option<impl ExactSizeIterator<Item = Quad>> {
+    Some(block_quad_slice(character)?.iter())
+}
+/// Blank Braille returns an empty view; other characters return `None`.
+pub fn braille_quad_slice(character: char) -> Option<Quads> {
+    if !('\u{2800}'..='\u{28ff}').contains(&character) { return None; }
+    Quads::new(glyph_quads(character)?)
+}
+/// Iterate stored single-dot quads without allocation or pattern reconstruction.
+pub fn braille_quads(character: char) -> Option<impl ExactSizeIterator<Item = Quad>> {
+    Some(braille_quad_slice(character)?.iter())
+}
+/// Rounded corners and non-box characters return `None`. Diagonals remain
+/// continuous ribbons rather than staircase pixel rectangles.
+pub fn boxdraw_quad_slice(character: char) -> Option<BoxDrawQuads> {
+    if !('\u{2500}'..='\u{257f}').contains(&character) { return None; }
+    let quads = glyph_quads(character)?;
+    (!quads.is_empty()).then_some(quads)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn malformed_quad_payloads_are_rejected() {
+        assert!(BoxDrawQuads::new(&[0; 31]).is_none());
+        assert!(BoxDrawQuads::new(&[0; 32]).is_some());
+        assert!(Quads::new(BoxDrawQuads::new(&[0; 32]).unwrap()).is_none());
+        assert!(BoxDrawQuads::new(&[]).unwrap().is_empty());
     }
-    let index = character as usize - 0x2580;
-    Some(&BLOCK_QUADS.quads[
-        BLOCK_QUADS.offsets[index] as usize..BLOCK_QUADS.offsets[index + 1] as usize
-    ])
-}
-
-/// Iterate precomputed block rectangles, including shades, without allocation.
-pub fn block_quads(character: char) -> Option<impl Iterator<Item = Quad>> {
-    Some(block_quad_slice(character)?.iter().copied())
-}
-
-const BOX_DRAW_RECTANGLE_COUNT: usize = rasterize::<0, 129>(&crate::boxdraw::RASTER_SYMBOLS).offsets[128] as usize;
-const BOX_DRAW_RECTANGLES: QuadRaster<BOX_DRAW_RECTANGLE_COUNT, 129> = rasterize(&crate::boxdraw::RASTER_SYMBOLS);
-
-/// Exact rectangles for 121 straight glyphs plus five continuous diagonal
-/// quads. Kept separate from the active glyph lookup and renderer.
-pub const BOX_DRAW_QUAD_COUNT: usize = BOX_DRAW_RECTANGLE_COUNT + 5;
-pub static BOX_DRAW_QUADS: BoxDrawRaster<BOX_DRAW_QUAD_COUNT> = boxdraw_rasterize();
-
-/// Draft quad data only; rounded corners and non-box characters return `None`.
-/// Diagonals are continuous ribbons rather than staircase pixel rectangles.
-pub fn boxdraw_quad_slice(character: char) -> Option<&'static [BoxDrawQuad]> {
-    let index = crate::BOX_DRAW_SYMBOLS.binary_search_by_key(&character, |&(ch, _)| ch).ok()?;
-    let start = BOX_DRAW_QUADS.offsets[index] as usize;
-    let end = BOX_DRAW_QUADS.offsets[index + 1] as usize;
-    (start != end).then_some(&BOX_DRAW_QUADS.quads[start..end])
-}
-
-const fn boxdraw_rasterize() -> BoxDrawRaster<BOX_DRAW_QUAD_COUNT> {
-    let empty = BoxDrawQuad { vertices: [[0.0; 2]; 4] };
-    let mut data = BoxDrawRaster { quads: [empty; BOX_DRAW_QUAD_COUNT], offsets: [0; 129] };
-    let mut count = 0;
-    let mut i = 0;
-    while i < crate::BOX_DRAW_SYMBOLS.len() {
-        let manual = crate::boxdraw::diagonal_quads(crate::BOX_DRAW_SYMBOLS[i].0);
-        let mut j = 0;
-        while j < manual.len() {
-            data.quads[count] = manual[j];
-            count += 1;
-            j += 1;
-        }
-        let mut j = BOX_DRAW_RECTANGLES.offsets[i] as usize;
-        while j < BOX_DRAW_RECTANGLES.offsets[i + 1] as usize {
-            data.quads[count] = BoxDrawQuad::rectangle(BOX_DRAW_RECTANGLES.quads[j]);
-            count += 1;
-            j += 1;
-        }
-        data.offsets[i + 1] = count as u16;
-        i += 1;
-    }
-    data
-}
-
-// Shared exact rectangle cover, evaluated at compile time. A count-only pass
-// sizes each packed table; a second pass fills it. No glyph-specific rules.
-const fn rasterize<const N: usize, const O: usize>(symbols: &[(char, u128)]) -> QuadRaster<N, O> {
-    let empty = Quad { top_left: [0, 0], bottom_right: [0, 0] };
-    let mut data = QuadRaster { quads: [empty; N], offsets: [0; O] };
-    let mut count = 0;
-    let mut i = 0;
-    while i < symbols.len() {
-        let mut pixels = symbols[i].1;
-        while pixels != 0 {
-            let mut first = 0;
-            while pixels & (1u128 << (65 - first)) == 0 { first += 1; }
-            let left = (first % 6) as u8;
-            let top = (first / 6) as u8;
-            let mut best = Quad { top_left: [left, top], bottom_right: [left + 1, top + 1] };
-            let mut best_area = 1;
-            let mut bottom = top + 1;
-            while bottom <= 11 {
-                let mut right = left + 1;
-                while right <= 6 {
-                    let quad = Quad { top_left: [left, top], bottom_right: [right, bottom] };
-                    let covered = quad_pixels(quad);
-                    let area = (right - left) * (bottom - top);
-                    if covered & pixels == covered && area > best_area {
-                        best = quad;
-                        best_area = area;
-                    }
-                    right += 1;
-                }
-                bottom += 1;
+    #[test]
+    fn stored_quads_cover_each_braille_dot_and_blank() {
+        for pattern in 0u32..256 {
+            let ch = char::from_u32(0x2800 + pattern).unwrap();
+            let quads = braille_quad_slice(ch).unwrap();
+            assert_eq!(quads.len(), pattern.count_ones() as usize);
+            assert!(quads.get(quads.len()).is_none());
+            for quad in quads {
+                assert_eq!(quad.bottom_right, quad.top_left.map(|v| v + 1));
             }
-            if N != 0 { data.quads[count] = best; }
-            count += 1;
-            pixels ^= quad_pixels(best);
         }
-        data.offsets[i + 1] = count as u16;
-        i += 1;
     }
-    data
-}
-
-const fn quad_pixels(quad: Quad) -> u128 {
-    let mut pixels = 0;
-    let mut y = quad.top_left[1];
-    while y < quad.bottom_right[1] {
-        let mut x = quad.top_left[0];
-        while x < quad.bottom_right[0] {
-            pixels |= 1u128 << (65 - (y as usize * 6 + x as usize));
-            x += 1;
-        }
-        y += 1;
-    }
-    pixels
 }

@@ -13,12 +13,12 @@ include = [
     "Cargo.toml",
     "README.md",
     "LICENSE",
-    "OFL-cjk.txt",
-    "NOTICE-cjk.md",
     "docs/**/*.png",
     "src/**/*.rs",
     "data/line-v1/*.bin",
     "data/line-v1/*.md",
+    "data/line-v1/lowercase-toppers/*.bin",
+    "data/line-v1/lowercase-toppers/*.md",
     "shaders/**/*.vert",
     "examples/**/*.rs",
     "tools/**/*.py",
@@ -26,13 +26,12 @@ include = [
 ]
 
 [dependencies]
-libm = { version = "0.2", default-features = false, optional = true }
 
 [features]
 default = ["stamp"]
-stamp = []
-raster = ["dep:libm"]
-han = []
+hex = []
+stamp = ["hex"]
+raster = []
 
 [[example]]
 name = "hello_world_bmp"

@@ -38,7 +38,15 @@ void main() {
     } else {
         if (p.style.x == 0.0) {
             uint slot = uint(-source.z-1.0);
-            pixel = source_pixel_in_cell(source.xy,vec2(slot%16u,slot/16u));
+            // Infer physical atlas columns from its target width and cell
+            // pitch. Standalone masks have one column; demo grids are separate.
+            uint columns = 1u;
+            if (p.style.y != 0.0) {
+                float gutter = max(6.0,ceil(p.transform.y*0.5)+1.0);
+                float pitch_x = ceil(p.style.y*6.0/11.0)+2.0*gutter;
+                columns = max(1u,uint(round(1.0/(p.transform.z*pitch_x))));
+            }
+            pixel = source_pixel_in_cell(source.xy,vec2(slot%columns,slot/columns));
         } else pixel = source_pixel(source.xy);
         if (p.style.x > 0.0) {
             // Grow the native bar outwards; the seed remains the cap centre.

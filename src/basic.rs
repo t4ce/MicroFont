@@ -1,139 +1,15 @@
-//! Basic Latin (U+0000–U+007F), copied from the existing font.
-//! Full 6×11 masks, top-left at bit 65. Single-cell control/space/DEL masks are blank;
-//! named control labels are prepared below as two- or three-cell composites.
+//! Basic Latin identities and multi-cell control labels.
+//! Bitmap values are loaded from the selected glyph bundle.
 
-use crate::z128 as z;
-
-pub const BASIC_SYMBOLS: [(char, u128); 128] = [
-    ('\u{00}', 0), // NUL
-    ('\u{01}', 0), // SOH
-    ('\u{02}', 0), // STX
-    ('\u{03}', 0), // ETX
-    ('\u{04}', 0), // EOT
-    ('\u{05}', 0), // ENQ
-    ('\u{06}', 0), // ACK
-    ('\u{07}', 0), // BEL
-    ('\u{08}', 0), // BS
-    ('\u{09}', 0), // HT
-    ('\u{0a}', 0), // LF
-    ('\u{0b}', 0), // VT
-    ('\u{0c}', 0), // FF
-    ('\u{0d}', 0), // CR
-    ('\u{0e}', 0), // SO
-    ('\u{0f}', 0), // SI
-    ('\u{10}', 0), // DLE
-    ('\u{11}', 0), // DC1
-    ('\u{12}', 0), // DC2
-    ('\u{13}', 0), // DC3
-    ('\u{14}', 0), // DC4
-    ('\u{15}', 0), // NAK
-    ('\u{16}', 0), // SYN
-    ('\u{17}', 0), // ETB
-    ('\u{18}', 0), // CAN
-    ('\u{19}', 0), // EM
-    ('\u{1a}', 0), // SUB
-    ('\u{1b}', 0), // ESC
-    ('\u{1c}', 0), // FS
-    ('\u{1d}', 0), // GS
-    ('\u{1e}', 0), // RS
-    ('\u{1f}', 0), // US
-    (' ', 0), // SP
-    ('!', 0x8208208200208000),
-    ('"', z(0x5145, 50)),
-    ('#', 0x1453e51453e514000),
-    ('$', 0x872aa1c2aa708000),
-    ('%', 0x12a94108414aa4000),
-    ('&', 0x85142158a289d000),
-    ('\'', z(0x1041, 51)),
-    ('(', 0x2108208208102000),
-    (')', 0x10204104104210000),
-    ('*', z(0x54e395, 43)),
-    ('+', z(0x1047c41, 27)),
-    (',', z(0x821, 9)),
-    ('-', z(0x1f, 37)),
-    ('.', z(0xc3, 14)),
-    ('/', 0x2084108410820000),
-    ('0', 0x1c8a28a28a289c000),
-    ('1', 0x218a4a2082082000),
-    ('2', 0x1c8a208421083e000),
-    ('3', 0x1c8a208c0a289c000),
-    ('4', 0xc524924f84104000),
-    ('5', 0x3e820f020820bc000),
-    ('6', 0x1c8a083c8a289c000),
-    ('7', 0x3e084108210410000),
-    ('8', 0x1c8a289c8a289c000),
-    ('9', 0x1c8a289e08289c000),
-    (':', z(0xc30000c3, 20)),
-    (';', 0xc30000c304200),
-    ('<', 0x84210204080000),
-    ('=', z(0x1f01f, 31)),
-    ('>', 0x810204210800000),
-    ('?', 0x1c8a2108200208000),
-    ('@', 0x1e86dd75d75ba0780),
-    ('A', 0x85228be8a28a2000),
-    ('B', 0x3c8a28bc8a28bc000),
-    ('C', 0x1c8a082082089c000),
-    ('D', 0x3c8a28a28a28bc000),
-    ('E', 0x3e82083c82083e000),
-    ('F', 0x3e82083c820820000),
-    ('G', 0x1c8a082c8a289c000),
-    ('H', 0x228a28be8a28a2000),
-    ('I', 0x3e20820820823e000),
-    ('J', 0x3e8a208208289c000),
-    ('K', 0x22928c30c28922000),
-    ('L', 0x2082082082083e000),
-    ('M', 0x36aaaaaa8a28a2000),
-    ('N', 0x32aaaaaaaaaaa6000),
-    ('O', 0x3e8a28a28a28be000),
-    ('P', 0x3c8a28bc820820000),
-    ('Q', 0x1c8a28a28aa91a000),
-    ('R', 0x3c8a28bcc28922000),
-    ('S', 0x1c8a081c08289c000),
-    ('T', 0x3e208208208208000),
-    ('U', 0x228a28a28a289c000),
-    ('V', 0x228a2894514208000),
-    ('W', 0x228a28a2aaa514000),
-    ('X', 0x228a25085228a2000),
-    ('Y', 0x228a2894208208000),
-    ('Z', 0x3e08210842083e000),
-    ('[', 0xe20820820820e000),
-    ('\\', 0x20810408104082000),
-    (']', 0x38208208208238000),
-    ('^', z(0x4291, 49)),
-    ('_', z(0x1f, 13)),
-    ('`', z(0x81, 56)),
-    ('a', z(0x7027a27, 14)),
-    ('b', 0x2082083c8a28bc000),
-    ('c', z(0xf41040f, 13)),
-    ('d', 0x208209e8a289e000),
-    ('e', z(0x722fa07, 14)),
-    ('f', 0x620821c208208000),
-    ('g', z(0x7a28a27827, 2)),
-    ('h', 0x2082083c8a28a2000),
-    ('i', 0x20801820821c000),
-    ('j', 0x208008208208a10),
-    ('k', 0x10410412518512000),
-    ('l', 0x1041041041040c000),
-    ('m', z(0x1e555555, 13)),
-    ('n', z(0x1e451451, 13)),
-    ('o', z(0x7228a27, 14)),
-    ('p', z(0x1c49249c41, 4)),
-    ('q', z(0x7249247041, 2)),
-    ('r', z(0x1c49041, 16)),
-    ('s', z(0x3907827, 14)),
-    ('t', 0x820821c208206000),
-    ('u', z(0x1145144f, 13)),
-    ('v', z(0x45128a1, 15)),
-    ('w', z(0x8aa7145, 14)),
-    ('x', z(0x11284291, 13)),
-    ('y', z(0x2289450821, 4)),
-    ('z', 0x3e09c83e000),
-    ('{', 0x2104108104102000),
-    ('|', 0x8208208208208000),
-    ('}', 0x20410408410420000),
-    ('~', z(0x42a1, 32)),
-    ('\u{7f}', 0), // DEL
-];
+pub const BASIC_CHARACTERS: [char; 128] = {
+    let mut characters = ['\0'; 128];
+    let mut index = 0;
+    while index < characters.len() {
+        characters[index] = index as u8 as char;
+        index += 1;
+    }
+    characters
+};
 
 const CONTROL_NAMES: [&str; 34] = [
     "NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
@@ -142,46 +18,66 @@ const CONTROL_NAMES: [&str; 34] = [
     "CAN", "EM", "SUB", "ESC", "FS", "GS", "RS", "US", "SP", "DEL",
 ];
 
-struct ControlData {
-    characters: [[char; 3]; 34],
-    pixels: [[u128; 3]; 34],
-}
-
-// Already in the program image: no allocation, lazy initialization or warming
-// on first use. Both representations come from the existing Basic Latin data.
-static CONTROL_DATA: ControlData = prepare_controls();
-
-const fn prepare_controls() -> ControlData {
-    let mut data = ControlData { characters: [['\0'; 3]; 34], pixels: [[0; 3]; 34] };
-    let mut i = 0;
-    while i < CONTROL_NAMES.len() {
-        let name = CONTROL_NAMES[i].as_bytes();
+const CONTROL_DATA: [[char; 3]; 34] = {
+    let mut characters = [['\0'; 3]; 34];
+    let mut index = 0;
+    while index < CONTROL_NAMES.len() {
+        let name = CONTROL_NAMES[index].as_bytes();
         let mut cell = 0;
         while cell < name.len() {
-            data.characters[i][cell] = name[cell] as char;
-            data.pixels[i][cell] = BASIC_SYMBOLS[name[cell] as usize].1;
+            characters[index][cell] = name[cell] as char;
             cell += 1;
         }
-        i += 1;
+        index += 1;
     }
-    data
-}
-
-/// Ready-to-use control labels, in the same multi-cell mask format as `SPECIAL`.
-/// Entries cover U+0000–U+0020 and U+007F (`DEL`), including `SP` for space.
-pub static CONTROL_SYMBOLS: [(char, &'static [u128]); 34] = {
-    let mut symbols: [(char, &'static [u128]); 34] = [('\0', &[]); 34];
-    let mut i = 0;
-    while i < symbols.len() {
-        symbols[i] = (if i == 33 { '\u{7f}' } else { (i as u8) as char }, CONTROL_DATA.pixels[i].split_at(CONTROL_NAMES[i].len()).0);
-        i += 1;
-    }
-    symbols
+    characters
 };
 
-/// Explicit control-label mask lookup, including the two-cell `SP` label.
-pub fn control_label_cells(character: char) -> Option<&'static [u128]> {
-    Some(CONTROL_SYMBOLS[control_index(character)?].1)
+/// Control-label character slices, including the two-cell `SP` label.
+pub const CONTROL_CHARACTERS: [(char, &'static [char]); 34] = {
+    let mut characters: [(char, &'static [char]); 34] = [('\0', &[]); 34];
+    let mut index = 0;
+    while index < characters.len() {
+        characters[index] = (
+            if index == 33 { '\u{7f}' } else { index as u8 as char },
+            CONTROL_DATA[index].split_at(CONTROL_NAMES[index].len()).0,
+        );
+        index += 1;
+    }
+    characters
+};
+
+/// An owned control label, decoded without allocation from the installed bundle.
+#[cfg(feature = "hex")]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ControlLabelCells {
+    pixels: [u128; 3],
+    len: u8,
+}
+
+#[cfg(feature = "hex")]
+impl ControlLabelCells {
+    pub fn as_slice(&self) -> &[u128] { &self.pixels[..self.len()] }
+    pub fn iter(&self) -> core::slice::Iter<'_, u128> { self.as_slice().iter() }
+    pub const fn len(&self) -> usize { self.len as usize }
+    pub const fn is_empty(&self) -> bool { self.len == 0 }
+}
+
+#[cfg(feature = "hex")]
+impl core::ops::Deref for ControlLabelCells {
+    type Target = [u128];
+    fn deref(&self) -> &Self::Target { self.as_slice() }
+}
+
+/// Decode a control-label mask, including `SP`, without an expanded mask table.
+#[cfg(feature = "hex")]
+pub fn control_label_cells(character: char) -> Option<ControlLabelCells> {
+    let characters = control_characters(character)?;
+    let mut cells = ControlLabelCells { pixels: [0; 3], len: characters.len() as u8 };
+    for (pixel, &letter) in cells.pixels.iter_mut().zip(characters) {
+        *pixel = crate::glyph_cell_pixels(letter);
+    }
+    Some(cells)
 }
 
 fn control_index(character: char) -> Option<usize> {
@@ -193,8 +89,7 @@ fn control_index(character: char) -> Option<usize> {
 }
 
 pub(crate) fn control_characters(character: char) -> Option<&'static [char]> {
-    let index = control_index(character)?;
-    Some(CONTROL_DATA.characters[index].split_at(CONTROL_NAMES[index].len()).0)
+    Some(CONTROL_CHARACTERS[control_index(character)?].1)
 }
 
 #[cfg(test)]
@@ -202,25 +97,32 @@ mod tests {
     use super::*;
 
     #[test]
-    fn control_composites_are_ready_and_use_existing_basic_masks() {
-        for (index, &(ch, cells)) in CONTROL_SYMBOLS.iter().enumerate() {
+    fn labels_keep_character_expansion_without_bitmap_storage() {
+        for (index, &(ch, letters)) in CONTROL_CHARACTERS.iter().enumerate() {
             assert_eq!(ch as usize, if index == 33 { 0x7f } else { index });
-            let name = CONTROL_NAMES[index];
-            assert_eq!(cells.len(), name.len());
-            assert!((2..=3).contains(&cells.len()));
-            for (&mask, letter) in cells.iter().zip(name.bytes()) {
+            assert_eq!(letters.iter().copied().collect::<std::string::String>(), CONTROL_NAMES[index]);
+        }
+        assert_eq!(crate::special_cells(' '), Some(&['S', 'P'][..]));
+        assert_eq!(crate::measure_text(" "), (12, 11));
+        assert_eq!(crate::special_cells('\u{7f}'), Some(&['D', 'E', 'L'][..]));
+        assert_eq!(crate::measure_text("\u{7f}"), (18, 11));
+    }
+
+    #[test]
+    #[cfg(feature = "hex")]
+    fn control_labels_read_the_installed_basic_masks() {
+        for &(ch, letters) in &CONTROL_CHARACTERS {
+            let cells = control_label_cells(ch).unwrap();
+            assert_eq!(cells.len(), letters.len());
+            for (&mask, &letter) in cells.iter().zip(letters) {
                 assert_ne!(mask, 0);
-                assert_eq!(mask, crate::glyph_cell_pixels(letter as char));
+                assert_eq!(mask, crate::glyph_cell_pixels(letter));
             }
         }
         assert_eq!(control_label_cells(' ').unwrap().len(), 2);
-        assert_eq!(crate::special_cells(' '), Some(&['S', 'P'][..]));
-        assert_eq!(crate::measure_text(" "), (12, 11));
-        assert_eq!(crate::glyph_cell_pixels(' '), 0);
         assert_eq!(control_label_cells('\u{7f}').unwrap().len(), 3);
-        assert_eq!(crate::special_cells('\u{7f}'), Some(&['D', 'E', 'L'][..]));
-        assert_eq!(crate::measure_text("\u{7f}"), (18, 11));
         assert!(control_label_cells('A').is_none());
+        assert_eq!(crate::glyph_cell_pixels(' '), 0);
     }
 
     #[test]
