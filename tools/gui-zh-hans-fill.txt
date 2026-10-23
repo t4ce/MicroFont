@@ -1,5 +1,0 @@
-# Common-character fillers in frequency order, after the required GUI vocabulary.
-# Source: Jun Da, Modern Chinese character frequency list (2004-03-30).
-# https://lingua.mtsu.edu/chinese-computing/statistics/char/list.php?Which=MO
-# Only the selected characters are stored; frequencies and glosses are omitted.
-的一了人我他这个们国以说要会也你对生能而子那得着自之年发后里道然家种事方多经么去学如都同现当起天还好其些样心她但因从想实军意力它与长把十民第公使情明三又业外两由很物手战向头政美相见被利什二产或己身果西斯月话特代老给世位次门先海通教儿原东声立及员水真论处走义各几条平气尔别女变四神何数少报才结反受太再感必场市直德资山金指克区至队形社便决治展马科司五基眼书非则听白却界达光强

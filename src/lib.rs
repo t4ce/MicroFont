@@ -23,8 +23,6 @@ pub use cp850::font_pixels;
 pub mod seven_segment;
 mod fontshape;
 pub use fontshape::FontShape;
-#[cfg(feature = "han")]
-mod gui_han;
 mod blocks;
 mod boxdraw;
 pub use boxdraw::BOX_DRAW_CHARACTERS;
@@ -40,9 +38,6 @@ pub use stamp::{
     stamp_argb, stamp_argb_stride, stamp_bytes, stamp_bytes_with_stride,
     stamp_text, stamp_text_with_stride,
 };
-#[cfg(feature = "han")]
-pub use gui_han::{GUI_HAN_COUNT, GUI_HAN_TABLE_BYTES, characters as gui_han_characters,
-    glyph_cell_pixels as gui_han_cell_pixels};
 
 pub const FHEIGHT: usize = 11;
 pub const FWIDTH: usize = 6;
@@ -126,10 +121,6 @@ pub fn glyph_cell_pixels(character: char) -> u128 {
     {
         bundle::bitmap(character).unwrap_or(0)
     } else {
-        #[cfg(feature = "han")]
-        if let Some(pixels) = gui_han::glyph_cell_pixels(character) {
-            return pixels;
-        }
         (font_pixels(glyph_byte(character)) as u128) << 2
     }
 }

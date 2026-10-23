@@ -6,7 +6,7 @@ pub const CHARACTERS: [char; 10] = ['🯰', '🯱', '🯲', '🯳', '🯴', '�
 #[cfg(feature = "hex")]
 pub fn glyph_mask(character: char) -> Option<u128> {
     if !('\u{1fbf0}'..='\u{1fbf9}').contains(&character) { return None; }
-    crate::bundle::bitmap(character as u32)
+    crate::bundle::bitmap(character)
 }
 
 #[cfg(all(test, feature = "raster"))]

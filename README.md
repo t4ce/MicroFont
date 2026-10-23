@@ -1,135 +1,110 @@
 # MicroFont
 
-MicroFont is a tiny `no_std` 6x11 bitmap font stamper for flat pixel buffers.
+MicroFont is a dependency-free `no_std` 6×11 font with bitmap masks and line/quad
+geometry. Glyph data lives in binary files, rather than Rust bitmap tables.
 
-![MicroFont 3.9.9: color CP850 atlas, Braille, block elements, and ARGB styles](https://raw.githubusercontent.com/t4ce/MicroFont/true/docs/font-atlas.png)
+## Features and the single-file bundle
 
-It exposes the packed font table, direct byte/text stamping helpers, and ARGB helpers for alpha, underline, strikeout, and vertical flip styling. Raw data and stamping have no dependencies; optional quad and line data is enabled with `raster`.
+| Features | Included data |
+| --- | --- |
+| `hex` | Full 66-bit cell masks only |
+| `raster` | Line strips, quads and shared component recipes only |
+| `hex,raster` | Both representations |
+| `stamp` (default) | Enables `hex` and buffer-stamping helpers |
 
-The default `stamp` feature enables all buffer stamping helpers. Use
-`default-features = false` for pixel data and lookup APIs alone. The independent
-`raster` feature adds `raster_quad::BRAILLE_QUADS`, `braille_quad_slice` and
-`braille_quads`; it does not require `stamp`. The independent, non-default
-`han` feature includes the Chinese GUI subset, its tables and accessors.
-Without `han`, those tables and lookup code are excluded and unsupported Han
-characters use the usual `?` fallback. For example:
+At least one of `hex` or `raster` is required. Neither mode pulls in external
+Rust dependencies. Han is not included.
 
 ```toml
 microfont = { version = "3.9.9", default-features = false, features = ["raster"] }
 ```
 
-Braille pixels are always generated at compile time. With `raster`, the same pass
-also prepares every glyph's quads in 6×11 source coordinates. Access borrows
-static data; no runtime warm-up or allocation is required. This precomputation
-does not guarantee that the hardware CPU cache contains the data.
+The standard-library-only host build script packs the selected fields into one
+uncompressed `microfont.bin`. Portable targets embed only that file. Runtime
+lookup needs no allocator, filesystem, tar reader, compression library or
+initialization call. The build script uses no external tools for portable builds.
 
-`BASIC_SYMBOLS` owns the existing single-cell Basic Latin masks in codepoint
-order. `CONTROL_SYMBOLS` holds ready-made two- or three-cell representations
-for U+0000–U+0020 and U+007F (`NUL`, `BS`, `SP`, `DEL`, etc.), assembled at compile time from the
-existing capital-letter and digit masks. `special_cells`, `measure_text` and
-Unicode stamping expand them just like the keyboard/map icons. Space displays
-`SP` in two cells. `control_label_cells` exposes their precomputed mask slices.
-Single-cell/raw byte masks retain their existing layout; Unicode DEL expands
-to the three-cell `DEL` label.
-The `raster_quad` module provides the precomputed box, block and Braille quads.
-The `raster_line` experiment supplies independent coordinate strips for `|` and
-`/`, leaving bitmap consumers unchanged. Each coordinate uses one byte: x in
-bits 0..2 (0–5), y in bits 3..6 (0–10); bit 7 is reserved. `glyph_strips` returns
-any number of strokes per override. A `Strip` holds at least two real points and
-separate `start` / `end` boundary tags (`End` or `Junction`).
+For `cfg(target_os = "trueos")`, the build script instead embeds only one
+`microfont.tar.lz4` archive. The tar has exactly one member, `microfont.bin`;
+LZ4 packaging uses the host `lz4` executable. TRUEOS decompresses it after heap
+setup, validates it with `install_bundle`, and retains the resulting bytes for
+the kernel lifetime before the first font output. The uncompressed file is a
+build intermediate, not a second embedded font. A second installation is rejected.
 
-Lowercase accented line glyphs share six private binary toppers and their
-existing base strokes. `glyph_strips` returns an iterable, indexable
-`GlyphStrips` view; composition does not copy point bytes or create combined
-strip arrays. See [lowercase toppers](data/line-v1/lowercase-toppers/README.md)
-for the full CP850/Unicode grid and the six editable assets. Bitmap masks and
-uppercase glyphs are independent of these lowercase compositions.
-
-The demo expands each strip to `[adj_start, real_points..., adj_end]` and
-submits a separate native `LineStripAdj` draw. Adjacency positions duplicate the
-boundary point; their z component carries `Junction=0` or `End=1`. Real vertices
-use depth 0.5, so an interior neighbouring real vertex is distinguishable from
-both boundary tags. This z convention belongs only to the demo's adjacency
-transport, not ordinary geometry. The existing pass-through geometry shader
-emits only the two central real vertices, with the renderer's default line
-width. It does not yet implement caps, junction clipping or overlap removal.
-Cell-edge detection is independent of the boundary tags. Single-point strips
-are rejected; two identical points remain a degenerate line, with no guaranteed
-point coverage. Dot rendering remains a separate experiment.
-
-There is no reach setting or triangle reconstruction.
-
-`BLOCK_SYMBOLS` lists all 32 Block Elements as visible characters beside embedded
-hex masks. With `raster`, `BLOCK_QUADS`, `block_quad_slice` and `block_quads`
-provide their exact 6×11 rectangles, derived at compile time from those masks
-by one shared cover algorithm. All 32 characters share a packed array of 104
-quads and 33 offsets (482 bytes total); no per-glyph padding or shade-specific
-lookup is needed. Pixel masks remain unchanged.
-
-`BOX_DRAW_SYMBOLS` is a complete 128-character draft table for Box
-Drawing glyphs in a 6×11 cell. It draws on 37 existing masks and drafts the
-missing 84 variants. Double vertical rails use columns 1 and 4, with matching
-corner/junction connections. Heavy vertical strokes are two columns wide
-(columns 2 and 3); heavy horizontal strokes remain three rows high. Only curves `╭╮╯╰` remain pixel-only; their raster lookup returns `None`.
-With `raster`, `BOX_DRAW_QUADS` and `boxdraw_quad_slice` provide 346 four-corner
-quads for the other 124 characters. The 121 straight glyphs use the same exact
-rectangle cover as blocks. Diagonals use continuous slanted geometry: one quad
-for `╱`, one for `╲`, and three non-overlapping quads for their union `╳`.
-`BoxDrawQuad::vertices` contains four perimeter-ordered `[f32; 2]` corners in
-6×11 source units, ready to split into two triangles. Raw diagonal hex masks
-retain their staircase pixels. The four rounded corners are the only masks
-without raster data. Four separated horizontal dashes cannot fit in six
-columns, so those drafts are approximations.
-`glyph_cell_pixels` and Unicode stamping use these canonical masks directly.
-`CP850_SYMBOLS` in `src/cp850.rs` lists all 256 display-code slots as visible
-characters with full 6×11 masks, including the graphical control slots and
-`⌂` at 0x7F. Missing masks are zero. Shared Basic Latin, box drawing, block
-and UI masks are referenced at compile time; the remaining 100 extended
-masks are owned here. The low-slot `¶` and `§` reuse their extended-slot masks.
-The legacy 224-slot `FPIXELS` view and byte lookup helpers are derived here
-as well, preserving their existing indexing and control-byte behavior.
-The remaining UI symbol masks live directly in `lib.rs`.
-
-
-Text helpers accept Unicode and select the existing CP850 atlas glyphs, including
-`§`, accented Latin letters and box drawing characters. Ordinary characters occupy
-one cell; unsupported characters display `?`. Byte and ARGB helpers continue to
-accept raw atlas codes. `glyph_byte` exposes the same lookup to other renderers.
-
-Unicode text also supports all 256 eight-dot Braille patterns (U+2800–U+28FF)
-and all 32 Block Elements (U+2580–U+259F), generated at compile time. Block
-fractions round to the nearest pixel in the default 6×11 cell; some horizontal
-eighth steps share a bitmap because the cell is only six pixels wide. Full
-blocks fill all 66 pixels, so adjacent cells join without gaps.
-`glyph_cell_pixels` exposes the full cell as a `u128` with the top-left pixel
-at bit 65. The legacy `glyph_pixels` mask uses bit 63 and omits the final two
-pixels. Byte/ARGB slot identities remain unchanged, with their box and block
-masks now derived from the canonical tables.
-
-The keyboard `⌨` and map `🗺` icons in `SPECIAL` use two and three cells
-respectively. `measure_text` and Unicode stamping account for these widths;
-`special_cells` exposes their internal half-cell characters to fixed-grid
-terminal renderers.
-
-Install with `cargo add microfont@3.9.9`.
-
-```rust
-let mut pixels = vec![0u32; 88 * 27];
-microfont::stamp_text(&mut pixels, 88, 27, 8, 8, "Hello World!", 0xF7E27E)?;
-```
-
-The example writes an uncompressed BMP:
+From the TRUEOS repository, produce a distributable archive with:
 
 ```sh
-cargo run --example hello_world_bmp
+make microfont-bundle MICROFONT_FEATURES=hex,raster
+# bld/microfont/microfont.tar.lz4
 ```
 
-Tests also generate visual atlas BMPs in `target/` for manual inspection.
+Use `MICROFONT_FEATURES=hex` or `raster` to produce either representation alone.
+For a portable single file without compression:
 
-Regenerate the README atlas with `cargo run --example readme_previews`; convert
-`target/font-atlas.ppm` to `docs/font-atlas.png` at 2× scale with nearest-neighbor sampling.
+```sh
+python3 tools/microfont-pack/build.py --features raster --output /tmp/microfont.bin
+```
 
-Unicode text also includes 55 TermDir UI symbols: border joins, rounded corners,
-arrows, menu markers, segmented digits, and file/action icons. Each occupies one
-6×11 cell, including the fullwidth code points and emoji; raw byte atlas APIs
-retain their existing mappings. The glyph masks are in the `UI_SYMBOLS` table in `src/lib.rs`.
+## Editable source records
+
+The existing `data/line-v1/` directory now holds version-2, mask-first records.
+Its historical directory name is retained so glyph editing paths stay stable.
+Each Unicode glyph is `uXXXX.bin` (uppercase hex, at least four digits). Private
+components have descriptive filenames in their own subdirectories.
+
+| Offset | Field |
+| --- | --- |
+| 0–15 | Little-endian `u128` bitmap; top-left pixel is bit 65, bottom-right bit 0 |
+| 16 | Flags: bit 0 means a bitmap is present; all other bits are zero |
+| 17 | Raster kind (below) |
+| 18–19 | Reserved, zero |
+| 20 onward | Raster payload, bounded by the file length |
+
+A zero-valued bitmap can be a valid blank glyph. A clear presence flag means
+that this record has no bitmap representation. Bitmap and raster fields are
+independent; editing a bitmap does not change line or quad geometry.
+
+| Kind | Payload |
+| --- | --- |
+| 0 | No raster data |
+| 1 | Existing v1 line-strip records |
+| 2 | Quads: four perimeter-ordered `[f32; 2]` corners, little endian, 32 bytes per quad |
+| 3 | Shared alias: target ID `u32 LE`, then transform byte |
+| 4 | Lowercase composition: base ID `u32 LE`, topper ID `u32 LE`, omit-dot byte |
+| 5 | Ordered list of shared line-component IDs, each `u32 LE` |
+
+Alias transforms are 1=mirror X, 2=mirror Y, 3=rotate 90°, 4=rotate 180°,
+5=rotate 270°. Six private [lowercase toppers](data/line-v1/lowercase-toppers/README.md)
+use IDs U+110000–U+110005. Seven-segment components use IDs 0x110100–0x110106.
+These IDs are internal records, not Unicode characters or ordinary glyphs.
+
+A line-strip record starts with a header byte: bits 0–5 are point count minus
+two, bit 6 marks an End at the start, and bit 7 marks an End at the finish.
+Otherwise the boundary is a Junction. Each point occupies one byte: x in bits
+0–2 (0–5), y in bits 3–6 (0–10); bit 7 is reserved. Two coincident points remain
+a degenerate segment. Strokes retain their own boundary tags.
+
+The build script validates selected records and their references. It discovers
+new source records automatically; no Rust geometry generator is needed.
+
+## Runtime API
+
+`glyph_cell_pixels(char)` returns the full bitmap; `glyph_pixels(char)` and
+`font_pixels(u8)` retain the legacy 64-bit view. Bitmap APIs require `hex`.
+Byte-to-character identities are unchanged, including the graphical CP850
+control slots in `CP850_CHARACTERS`. Identity-only constants replace the old
+bitmap-bearing `*_SYMBOLS` and `FPIXELS` tables.
+
+With `stamp`, `stamp_text`, `stamp_bytes` and the ARGB variants write to caller
+buffers. Controls and space can expand into named labels; keyboard/map icons
+use private cells. `control_label_cells` returns a small owned mask view.
+Unsupported Unicode uses the existing CP850 replacement cell.
+
+With `raster`, `raster_line::glyph_strips` returns a borrowed `GlyphStrips` view.
+Its iterator/get methods yield `Strip` values referencing the shared point
+bytes. `raster_quad::glyph_quads` and the box/block/Braille helpers return quad
+views with value iterators. Raster-only builds contain no bitmap fields and
+never reconstruct quads from hidden embedded masks.
+
+The flat bundle layout and validation rules are documented in
+[data/line-v1/README.md](data/line-v1/README.md).

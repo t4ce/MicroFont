@@ -2,8 +2,8 @@
 name = "microfont"
 version = "3.9.9"
 edition = "2024"
-license = "MIT AND OFL-1.1"
-description = "MicroFont is a tiny no_std 6x11 bitmap font stamper for flat pixel buffers."
+license = "MIT"
+description = "MicroFont is a dependency-free no_std 6x11 bitmap and line/quad font."
 homepage = "https://github.com/t4ce/MicroFont"
 repository = "https://github.com/t4ce/MicroFont"
 readme = "README.md"
@@ -11,14 +11,13 @@ keywords = ["font", "bitmap", "pixel", "no-std", "embedded"]
 categories = ["no-std", "embedded", "graphics", "rendering"]
 include = [
     "Cargo.toml",
+    "build.rs",
     "README.md",
     "LICENSE",
     "docs/**/*.png",
     "src/**/*.rs",
-    "data/line-v1/*.bin",
-    "data/line-v1/*.md",
-    "data/line-v1/lowercase-toppers/*.bin",
-    "data/line-v1/lowercase-toppers/*.md",
+    "data/line-v1/**/*.bin",
+    "data/line-v1/**/*.md",
     "shaders/**/*.vert",
     "examples/**/*.rs",
     "tools/**/*.py",

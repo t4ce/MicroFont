@@ -1,7 +1,7 @@
 # Lowercase toppers
 
 Six private line-bin components, independent of the regular Unicode glyphs
-``¨ ´ ` ^ ° ~``. They use the same strip-record format as the parent directory.
+``¨ ´ ` ^ ° ~``. They use the same mask-first record envelope as the parent directory; their bitmap flag is clear and kind 1 carries the line strips.
 Edit these files to tune one topper across all its lowercase compositions:
 
 | File | Topper | Unicode combining identity (reference only) |
@@ -18,7 +18,7 @@ Coordinates are already placed in the 6×11 cell, above the lowercase body
 resizing is applied. The initial shapes come from the authored lowercase bins,
 including the latest `ä` dots, rather than the standalone punctuation glyphs.
 
-`tools/generate_line_glyphs.py` maps these 36 precomposed Unicode letters:
+The bundle maps these 36 precomposed Unicode letters:
 
 | Base | ¨ | ´ | \` | ^ | ° | ~ |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -50,11 +50,7 @@ tables remain unchanged. The components do not register standalone glyphs.
 
 `GlyphStrips` is a borrowed view of the base and topper: point bytes and strip
 arrays are shared, with no combined bin or per-letter combined strip array.
-Only the character-to-component mapping is added per letter. The six initial
-files total 27 bytes, replacing 204 bytes of combined lowercase bins. Rendered
+Only the character-to-component mapping is added per letter. The six topper payloads total 27 bytes; each source file also has its 20-byte header. Rendered
 atlas cells and GPU draws still exist for each supported character.
 
-Run `python3 vendor/microfont/tools/generate_line_glyphs.py` from the TRUEOS root
-(also run by `make iso`). A missing base or topper leaves those combinations
-unavailable. Duplicate full bins for these compositions are rejected so they
-cannot silently override a shared edit.
+Cargo packages and validates these source records automatically. Each composed character has one source record containing its independent bitmap field and a reference recipe. A missing referenced base or topper is rejected; recipes cannot silently fall back to duplicated strokes.
