@@ -15,7 +15,9 @@ vec2 source_pixel(vec2 at) {
     if (p.style.y == 0.0) return at*scale;
     vec2 grid = vec2(6.0,11.0);
     vec2 cell = floor(at/grid);
-    float gutter = max(6.0,ceil(p.transform.y*0.5)+1.0);
+    float half_width = p.transform.y*0.5;
+    float dot_overhang = half_width*sqrt(2.0)-scale*0.5+0.5;
+    float gutter = max(6.0,ceil(max(half_width+1.0,dot_overhang)));
     vec2 pitch = vec2(ceil(p.style.y*6.0/11.0),p.style.y)+2.0*gutter;
     return cell*pitch + (at-cell*grid)*scale + gutter;
 }

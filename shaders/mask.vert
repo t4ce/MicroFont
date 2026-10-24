@@ -10,11 +10,16 @@ layout(push_constant) uniform Params {
 } p;
 // Zero style.y retains the regular atlas used by existing consumers.
 // Physical-size cells add pixel gutters without changing source vertices.
+float cell_gutter() {
+    float half_width = p.transform.y*0.5;
+    float dot_overhang = half_width*sqrt(2.0)-p.transform.x*0.5+0.5;
+    return max(6.0,ceil(max(half_width+1.0,dot_overhang)));
+}
 vec2 source_pixel_in_cell(vec2 at,vec2 cell) {
     float scale = p.transform.x;
     if (p.style.y == 0.0) return at*scale;
     vec2 grid = vec2(6.0,11.0);
-    float gutter = max(6.0,ceil(p.transform.y*0.5)+1.0);
+    float gutter = cell_gutter();
     vec2 pitch = vec2(ceil(p.style.y*6.0/11.0),p.style.y)+2.0*gutter;
     return cell*pitch + (at-cell*grid)*scale + gutter;
 }
@@ -42,7 +47,7 @@ void main() {
             // pitch. Standalone masks have one column; demo grids are separate.
             uint columns = 1u;
             if (p.style.y != 0.0) {
-                float gutter = max(6.0,ceil(p.transform.y*0.5)+1.0);
+                float gutter = cell_gutter();
                 float pitch_x = ceil(p.style.y*6.0/11.0)+2.0*gutter;
                 columns = max(1u,uint(round(1.0/(p.transform.z*pitch_x))));
             }
@@ -50,10 +55,11 @@ void main() {
         } else pixel = source_pixel(source.xy);
         if (p.style.x > 0.0) {
             // Grow the native bar outwards; the seed remains the cap centre.
-            // Adjacency vertices and junction endpoints are never extended.
-            if (source.z == 0.25 && p.style.z != 0.0)
+            // Dot markers add a width-sized footprint; cap tags still decide
+            // which sides round. Adjacency vertices are never extended.
+            if ((source.z == 0.25 && p.style.z != 0.0) || source.z == 1.25)
                 pixel -= p.start_point_direction.zw*p.style.x;
-            if (source.z == 0.75 && p.style.w != 0.0)
+            if ((source.z == 0.75 && p.style.w != 0.0) || source.z == 1.75)
                 pixel -= p.end_point_direction.zw*p.style.x;
         }
     }
