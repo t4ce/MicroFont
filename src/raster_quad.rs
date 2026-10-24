@@ -1,5 +1,7 @@
 //! Borrowed line/quad raster records in the 6×11 source cell.
 //! Coordinates start at the top left; right and bottom edges are exclusive.
+use crate::bundle::corner::CornerRecipe;
+pub use crate::bundle::corner::{MAX_CURVE_QUADS, MIN_CURVE_QUADS};
 
 /// A filled rectangle in source-cell units, before renderer scaling.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -20,6 +22,8 @@ pub struct BoxDrawQuad {
 #[derive(Clone, Copy, Debug)]
 pub struct BoxDrawQuads {
     bytes: &'static [u8],
+    corner: Option<CornerRecipe>,
+    curve_quads: u8,
 }
 impl BoxDrawQuads {
     fn new(bytes: &'static [u8]) -> Option<Self> {
@@ -27,11 +31,14 @@ impl BoxDrawQuads {
         for value in bytes.chunks_exact(4) {
             if !f32::from_le_bytes(value.try_into().ok()?).is_finite() { return None; }
         }
-        Some(Self { bytes })
+        Some(Self { bytes, corner: None, curve_quads: MIN_CURVE_QUADS })
     }
-    pub fn len(self) -> usize { self.bytes.len() / 32 }
-    pub fn is_empty(self) -> bool { self.bytes.is_empty() }
+    pub fn len(self) -> usize { if self.corner.is_some() { 2 + self.curve_quads as usize } else { self.bytes.len() / 32 } }
+    pub fn is_empty(self) -> bool { self.len() == 0 }
     pub fn get(self, index: usize) -> Option<BoxDrawQuad> {
+        if let Some(corner) = self.corner {
+            return Some(BoxDrawQuad { vertices: corner.quad(index, self.curve_quads)? });
+        }
         let start = index.checked_mul(32)?;
         let bytes = self.bytes.get(start..start.checked_add(32)?)?;
         let mut vertices = [[0.0; 2]; 4];
@@ -118,9 +125,31 @@ pub const GLYPH_CHARACTERS: &[char] = include!(concat!(env!("OUT_DIR"), "/quad_c
 
 /// Borrow any ready-to-use quad glyph from the installed binary bundle.
 pub fn glyph_quads(character: char) -> Option<BoxDrawQuads> {
+    glyph_quads_with_curve_quads(character, MIN_CURVE_QUADS)
+}
+
+/// Select a cached curve variant. Ordinary stored quads ignore this budget.
+pub fn glyph_quads_with_curve_quads(character: char, curve_quads: u8) -> Option<BoxDrawQuads> {
     let record = crate::bundle::record(character as u32)?;
-    if record.kind() != 2 { return None; }
-    BoxDrawQuads::new(record.raster())
+    match record.kind() {
+        2 => BoxDrawQuads::new(record.raster()),
+        6 => Some(BoxDrawQuads { bytes: &[], corner: Some(CornerRecipe::parse(record.raster())?),
+            curve_quads: curve_quads.clamp(MIN_CURVE_QUADS, MAX_CURVE_QUADS) }),
+        _ => None,
+    }
+}
+
+/// Adaptive quarter-circle budget; None identifies an ordinary stored glyph.
+pub fn corner_curve_quads(character: char, em_height_px: u32, em_10mm_px: Option<u32>) -> Option<u8> {
+    let record = crate::bundle::record(character as u32)?;
+    if record.kind() != 6 { return None; }
+    Some(CornerRecipe::parse(record.raster())?.curve_quads(em_height_px, em_10mm_px))
+}
+
+/// Two straight arms plus a size-appropriate curve, or the original stored quads.
+pub fn glyph_quads_at_size(character: char, em_height_px: u32, em_10mm_px: Option<u32>) -> Option<BoxDrawQuads> {
+    glyph_quads_with_curve_quads(character,
+        corner_curve_quads(character, em_height_px, em_10mm_px).unwrap_or(MIN_CURVE_QUADS))
 }
 
 /// Borrow exact filled rectangles for any Block Element; non-blocks return `None`.
@@ -141,7 +170,7 @@ pub fn braille_quad_slice(character: char) -> Option<Quads> {
 pub fn braille_quads(character: char) -> Option<impl ExactSizeIterator<Item = Quad>> {
     Some(braille_quad_slice(character)?.iter())
 }
-/// Rounded corners and non-box characters return `None`. Diagonals remain
+/// Missing glyphs and non-box characters return `None`. Diagonals remain
 /// continuous ribbons rather than staircase pixel rectangles.
 pub fn boxdraw_quad_slice(character: char) -> Option<BoxDrawQuads> {
     if !('\u{2500}'..='\u{257f}').contains(&character) { return None; }

@@ -6,6 +6,18 @@ starts at offset 20. See the [crate README](../../README.md) for every source
 field and raster recipe. The old raw strip-only file format is intentionally
 replaced; strip encoding itself is unchanged.
 
+`homebutton.bin` is a named exception to Unicode filenames: private ID
+`0x110200`, bitmap zero with presence flag zero, kind 1. It is used exclusively
+by the UI4 start button, outside the regular atlases. TRUEOS raster builds fail
+if the file is absent; malformed or non-line home-button records are rejected.
+Its raw exports can use the same `import-lines.py` workflow as Unicode bins.
+
+Kind 6 contains a 17-byte rounded-corner recipe: orientation byte
+(0=╭, 1=╮, 2=╯, 3=╰), followed by junction x/y, centreline radius and stroke
+width as four little-endian `f32` values. Its straight arms join cell edges;
+the quarter-circle has an adaptive 4–16 quad budget. Invalid or out-of-cell
+recipes are rejected even when only bitmap fields are selected.
+
 ## Importing raw line exports
 
 Keep exporting the same raw line-strip bytes from your glyph editor. From the

@@ -1,6 +1,11 @@
 //! Shared, allocation-free validation of the selected single-file font image.
 pub const HEADER: usize = 24;
 pub const ENTRY: usize = 24;
+#[path = "asset_ids.rs"]
+pub(crate) mod assets;
+#[allow(dead_code)]
+#[path = "corner_recipe.rs"]
+pub(crate) mod corner;
 pub fn u32_at(data: &[u8], at: usize) -> u32 {
     u32::from_le_bytes(data[at..at + 4].try_into().unwrap())
 }
@@ -67,6 +72,7 @@ pub fn validate(data: &[u8]) -> Result<(), &'static str> {
         if char::from_u32(id).is_none()
             && !(0x110000..=0x110005).contains(&id)
             && !(0x110100..=0x110106).contains(&id)
+            && id != assets::HOME_BUTTON_ID
         {
             return Err("invalid font id");
         }
@@ -75,6 +81,9 @@ pub fn validate(data: &[u8]) -> Result<(), &'static str> {
         let raster = u32_at(data, at + 8) as usize;
         let len = u32_at(data, at + 12) as usize;
         let kind = data[at + 16];
+        if id == assets::HOME_BUTTON_ID && (mask != 0 || kind != 1) {
+            return Err("homebutton must be a private line-only asset");
+        }
         if data[at + 17] & !1 != 0 || data[at + 18..at + ENTRY].iter().any(|&v| v != 0) {
             return Err("font entry flags");
         }
@@ -97,7 +106,7 @@ pub fn validate(data: &[u8]) -> Result<(), &'static str> {
                 return Err("empty font entry");
             }
         } else {
-            if data[10] & 2 == 0 || raster != cursor || kind > 5 {
+            if data[10] & 2 == 0 || raster != cursor || kind > 6 {
                 return Err("font raster placement");
             }
             cursor = cursor.checked_add(len).ok_or("raster overflow")?;
@@ -121,6 +130,7 @@ pub fn validate(data: &[u8]) -> Result<(), &'static str> {
                 3 if len == 5 && (1..=5).contains(&bytes[4]) => {}
                 4 if len == 9 && bytes[8] <= 1 => {}
                 5 if len != 0 && len % 4 == 0 => {}
+                6 if corner::CornerRecipe::parse(bytes).is_some() => {}
                 _ => return Err("invalid raster recipe"),
             }
         }

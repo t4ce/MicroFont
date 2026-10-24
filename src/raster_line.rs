@@ -313,6 +313,12 @@ fn lowercase_topper_strips(topper: LowercaseTopper) -> Option<GlyphBytes> {
     source(0x110000 + topper as u32)
 }
 
+/// Exclusive start-button geometry. Missing data stays missing; it has no
+/// Unicode alias and is never added to the regular line-glyph atlas.
+pub fn home_button_strips() -> Option<GlyphStrips> {
+    Some(GlyphStrips::plain(source(crate::bundle::HOME_BUTTON_ID)?))
+}
+
 /// Read a glyph from the installed bundle. Missing raster data stays missing;
 /// aliases, shared seven-segment strokes, and lowercase toppers share bytes.
 pub fn glyph_strips(character: char) -> Option<GlyphStrips> {

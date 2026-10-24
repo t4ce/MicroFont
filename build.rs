@@ -47,6 +47,8 @@ fn sources(dir: &Path, records: &mut BTreeMap<u32, Source>) {
                 .unwrap();
             assert!(n < 7);
             0x110100 + n
+        } else if stem == "homebutton" {
+            format::assets::HOME_BUTTON_ID
         } else {
             let id = u32::from_str_radix(stem.strip_prefix('u').expect("uXXXX.bin"), 16).unwrap();
             assert!(
@@ -63,7 +65,7 @@ fn sources(dir: &Path, records: &mut BTreeMap<u32, Source>) {
         );
         let mask: [u8; 16] = bytes[..16].try_into().unwrap();
         assert!(u128::from_le_bytes(mask) >> 66 == 0, "{}: mask exceeds 6x11", path.display());
-        assert!(bytes[16] & !1 == 0 && bytes[17] <= 5, "{}: invalid flags/kind", path.display());
+        assert!(bytes[16] & !1 == 0 && bytes[17] <= 6, "{}: invalid flags/kind", path.display());
         assert!(
             bytes[16] & 1 != 0 || mask == [0; 16],
             "{}: bitmap value needs its presence flag",
@@ -179,6 +181,10 @@ fn main() {
     assert!(flags & 3 != 0, "MicroFont needs feature hex, raster, or both");
     let mut records = BTreeMap::new();
     sources(&dir, &mut records);
+    if flags & 2 != 0 && env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("trueos") {
+        assert!(records.contains_key(&format::assets::HOME_BUTTON_ID),
+            "TRUEOS requires the private homebutton.bin start-button asset; no fallback");
+    }
     // Validate source edits even when this build omits that representation.
     let full = pack(&records, 3);
     format::validate(&full).expect("invalid MicroFont source records");
@@ -204,7 +210,7 @@ fn main() {
     fs::write(out.join("line_characters.rs"), characters).unwrap();
     let mut quads = String::from("&[");
     if flags & 2 != 0 {
-        for r in records.values().filter(|r| r.kind == 2 && r.id <= 0x10ffff) {
+        for r in records.values().filter(|r| matches!(r.kind, 2 | 6) && r.id <= 0x10ffff) {
             quads.push_str(&format!("'\\u{{{:X}}}',", r.id));
         }
     }

@@ -72,11 +72,20 @@ independent; editing a bitmap does not change line or quad geometry.
 | 3 | Shared alias: target ID `u32 LE`, then transform byte |
 | 4 | Lowercase composition: base ID `u32 LE`, topper ID `u32 LE` (0 for none), omit-dot byte |
 | 5 | Ordered list of shared line-component IDs, each `u32 LE` |
+| 6 | Rounded box corner: orientation byte, then junction x/y, radius and stroke width as four `f32 LE` values |
 
 Alias transforms are 1=mirror X, 2=mirror Y, 3=rotate 90°, 4=rotate 180°,
 5=rotate 270°. Six private [lowercase toppers](data/line-v1/lowercase-toppers/README.md)
 use IDs U+110000–U+110005. Seven-segment components use IDs 0x110100–0x110106.
 These IDs are internal records, not Unicode characters or ordinary glyphs.
+
+`homebutton.bin` is the line-only private start-button asset, ID `0x110200`.
+Its 20-byte source header has a zero bitmap and presence flag zero, raster kind
+1, then the original raw strip bytes. `raster_line::home_button_strips()` is its
+named reader: it has no Unicode alias and does not enter either font atlas.
+TRUEOS raster builds require this file and UI4 renders it independently once
+at startup, with no replacement-glyph or section-sign fallback. Hex-only
+bundles omit the asset.
 
 A line-strip record starts with a header byte: bits 0–5 are point count minus
 two, bit 6 marks an End at the start, and bit 7 marks an End at the finish.
@@ -86,6 +95,18 @@ a degenerate segment. Strokes retain their own boundary tags.
 
 The build script validates selected records and their references. It discovers
 new source records automatically; no Rust geometry generator is needed.
+
+Rounded `╭ ╮ ╯ ╰` tiles each use two straight quads and a quarter-circle made
+from 4–16 quads. The compact recipe uses orientation 0/1/2/3 respectively;
+the initial junction is `(2.5,5.5)`, radius 2 and stroke width 1 source unit,
+matching the adjoining `─` and `│` tiles. Bitmap fields remain independent.
+`glyph_quads_at_size(character, em_height_px, em_10mm_px)` selects a budget:
+the physical-size floor is four curve quads at 10mm, eight at 20mm and sixteen
+at 40mm, with a sixteen-quad cap. A quarter-pixel outer-arc chord-error target
+can increase the count on dense displays. If physical metrics are unavailable,
+the same pixel-error target chooses the count with a minimum of four. The
+default `glyph_quads` view uses four curve quads. All four orientations use the
+same allocation-free recipe; no trig library or stored tessellation is needed.
 
 ## Runtime API
 

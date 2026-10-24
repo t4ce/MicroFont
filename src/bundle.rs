@@ -2,6 +2,9 @@
 use core::sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering};
 #[path = "bundle_format.rs"]
 mod format;
+pub use format::assets::HOME_BUTTON_ID;
+#[cfg(feature = "raster")]
+pub(crate) use format::corner;
 include!("cp850_characters.rs");
 
 pub const UNCOMPRESSED_BUNDLE_BYTES: usize = include!(concat!(env!("OUT_DIR"), "/bundle_size.rs"));
