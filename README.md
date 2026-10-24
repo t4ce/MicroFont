@@ -70,7 +70,7 @@ independent; editing a bitmap does not change line or quad geometry.
 | 1 | Existing v1 line-strip records |
 | 2 | Quads: four perimeter-ordered `[f32; 2]` corners, little endian, 32 bytes per quad |
 | 3 | Shared alias: target ID `u32 LE`, then transform byte |
-| 4 | Lowercase composition: base ID `u32 LE`, topper ID `u32 LE`, omit-dot byte |
+| 4 | Lowercase composition: base ID `u32 LE`, topper ID `u32 LE` (0 for none), omit-dot byte |
 | 5 | Ordered list of shared line-component IDs, each `u32 LE` |
 
 Alias transforms are 1=mirror X, 2=mirror Y, 3=rotate 90°, 4=rotate 180°,

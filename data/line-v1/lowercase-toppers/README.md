@@ -48,6 +48,10 @@ the transformed `u` alias. Composed `i` omits its ordinary dot strokes (whole
 strips above row 4), preserving its body and foot. Uppercase and all hex bitmap
 tables remain unchanged. The components do not register standalone glyphs.
 
+Dotless `ı` (U+0131, CP850 0xD5) uses the same composition recipe with base `i`,
+topper ID zero (none), and dot omission enabled. It shares the existing body and
+foot strokes without storing additional point bytes.
+
 `GlyphStrips` is a borrowed view of the base and topper: point bytes and strip
 arrays are shared, with no combined bin or per-letter combined strip array.
 Only the character-to-component mapping is added per letter. The six topper payloads total 27 bytes; each source file also has its 20-byte header. Rendered

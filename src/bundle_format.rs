@@ -149,8 +149,9 @@ pub fn validate(data: &[u8]) -> Result<(), &'static str> {
                 }
             }
             4 => {
+                let topper = u32_at(data, start + 4);
                 if !matches!(target_kind(u32_at(data, start))?, 1 | 3)
-                    || target_kind(u32_at(data, start + 4))? != 1
+                    || (topper != 0 && target_kind(topper)? != 1)
                 {
                     return Err("composition source");
                 }

@@ -321,7 +321,8 @@ pub fn glyph_strips(character: char) -> Option<GlyphStrips> {
         let bytes = record.raster();
         if bytes.len() != 9 { return None; }
         let base = source(u32::from_le_bytes(bytes[..4].try_into().ok()?))?;
-        let topper = source(u32::from_le_bytes(bytes[4..8].try_into().ok()?))?;
+        let topper_id = u32::from_le_bytes(bytes[4..8].try_into().ok()?);
+        let topper = if topper_id == 0 { GlyphBytes::EMPTY } else { source(topper_id)? };
         if bytes[8] > 1 { return None; }
         Some(GlyphStrips::topped(base, topper, bytes[8] != 0))
     } else {
