@@ -113,6 +113,9 @@ impl Iterator for QuadIter {
 }
 impl ExactSizeIterator for QuadIter {}
 
+/// Scalar quad glyph identities, generated from the selected binary bundle.
+pub const GLYPH_CHARACTERS: &[char] = include!(concat!(env!("OUT_DIR"), "/quad_characters.rs"));
+
 /// Borrow any ready-to-use quad glyph from the installed binary bundle.
 pub fn glyph_quads(character: char) -> Option<BoxDrawQuads> {
     let record = crate::bundle::record(character as u32)?;

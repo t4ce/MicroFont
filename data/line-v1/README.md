@@ -6,6 +6,33 @@ starts at offset 20. See the [crate README](../../README.md) for every source
 field and raster recipe. The old raw strip-only file format is intentionally
 replaced; strip encoding itself is unchanged.
 
+## Importing raw line exports
+
+Keep exporting the same raw line-strip bytes from your glyph editor. From the
+TRUEOS root, import an export before replacing the canonical source record:
+
+```sh
+python3 tools/microfont-pack/import-lines.py /tmp/u2194.bin
+```
+
+The importer preserves the existing glyph's bitmap value and presence flag,
+sets raster kind 1, and replaces only its line payload. A new glyph starts with
+no bitmap. Use `--glyph U+2194` if the export has another filename.
+
+If an export has already overwritten its canonical `uXXXX.bin`, explicitly
+recover the last committed bitmap header while retaining the exported strokes:
+
+```sh
+python3 tools/microfont-pack/import-lines.py --recover-header-from-git \
+  vendor/microfont/data/line-v1/u2194.bin
+```
+
+Multiple exports can be passed together. Every input is validated before any
+target is written. The ordinary build remains strict so a damaged bitmap header
+cannot silently become a raw-line glyph.
+
+## Packed image
+
 `build.rs` selects bitmap fields, raster fields, or both. It sorts IDs, writes
 one index followed by selected payloads, and validates the entire result.
 Absent representations occupy no payload bytes. Unknown versions, empty

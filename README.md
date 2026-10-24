@@ -103,7 +103,9 @@ Unsupported Unicode uses the existing CP850 replacement cell.
 With `raster`, `raster_line::glyph_strips` returns a borrowed `GlyphStrips` view.
 Its iterator/get methods yield `Strip` values referencing the shared point
 bytes. `raster_quad::glyph_quads` and the box/block/Braille helpers return quad
-views with value iterators. Raster-only builds contain no bitmap fields and
+views with value iterators. `raster_quad::GLYPH_CHARACTERS` lists stored quad
+glyphs, including `▬` and `■` outside the box/block ranges.
+Raster-only builds contain no bitmap fields and
 never reconstruct quads from hidden embedded masks.
 
 The flat bundle layout and validation rules are documented in

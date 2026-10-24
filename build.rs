@@ -58,7 +58,7 @@ fn sources(dir: &Path, records: &mut BTreeMap<u32, Source>) {
         let bytes = fs::read(&path).unwrap();
         assert!(
             bytes.len() >= 20 && bytes[18..20] == [0, 0],
-            "{}: invalid mask-first header",
+            "{}: invalid mask-first header; import raw line exports with tools/microfont-pack/import-lines.py (see data/line-v1/README.md)",
             path.display()
         );
         let mask: [u8; 16] = bytes[..16].try_into().unwrap();
@@ -202,6 +202,14 @@ fn main() {
     }
     characters.push(']');
     fs::write(out.join("line_characters.rs"), characters).unwrap();
+    let mut quads = String::from("&[");
+    if flags & 2 != 0 {
+        for r in records.values().filter(|r| r.kind == 2 && r.id <= 0x10ffff) {
+            quads.push_str(&format!("'\\u{{{:X}}}',", r.id));
+        }
+    }
+    quads.push(']');
+    fs::write(out.join("quad_characters.rs"), quads).unwrap();
     if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("trueos") {
         let tar_path = out.join("microfont.tar");
         fs::write(&tar_path, tar(&bytes)).unwrap();
