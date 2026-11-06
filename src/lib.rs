@@ -33,6 +33,8 @@ mod stamp;
 pub mod raster_quad;
 #[cfg(feature = "raster")]
 pub mod raster_line;
+#[cfg(feature = "raster")]
+pub mod svg;
 #[cfg(feature = "stamp")]
 pub use stamp::{
     stamp_argb, stamp_argb_stride, stamp_bytes, stamp_bytes_with_stride,
@@ -63,66 +65,13 @@ pub fn special_cells(character: char) -> Option<&'static [char]> {
     }
 }
 
-// Preserve the established Unicode lookup order independently of stored masks.
-// This identity list intentionally retains its original order for compatibility.
-#[cfg(feature = "hex")]
-const UI_CHARACTERS: [char; 26] = [
-    'ᗰ',
-    '→',
-    '⇝',
-    '⎛',
-    '⎜',
-    '⎝',
-    '␛',
-    '␡',
-    '◇',
-    '★',
-    '☩',
-    '☰',
-    '⫸',
-    '・',
-    '＃',
-    'Ｎ',
-    'Ｕ',
-    '🖈',
-    '🖹',
-    '🖿',
-    '🗑',
-    '🗜',
-    '🞁',
-    '🞃',
-    '🪦',
-    '🯀',
-];
-
-#[cfg(feature = "hex")]
-fn symbol_pixels(character: char) -> Option<u128> {
-    let code = character as u32;
-    if code <= 0x7f || (0x2500..=0x257f).contains(&code)
-        || (0x2580..=0x259f).contains(&code)
-    {
-        Some(bundle::bitmap(character).unwrap_or(0))
-    } else {
-        seven_segment::glyph_mask(character)
-    }
-}
-
 /// Full 6x11 Unicode cell, with the top-left pixel at bit 65 and bottom-right
-/// at bit 0. The selected bundle owns every stored bitmap. Unsupported Unicode
-/// characters use the existing CP850 replacement cell.
+/// at bit 0. Any stored Unicode bitmap is available, including graphical CP850
+/// control-slot identities. Missing Unicode uses the CP850 replacement cell.
 #[cfg(feature = "hex")]
 pub fn glyph_cell_pixels(character: char) -> u128 {
-    if ('\u{e000}'..='\u{e004}').contains(&character) {
-        bundle::bitmap(character).unwrap_or(0)
-    } else if let Some(pixels) = symbol_pixels(character) {
-        pixels
-    } else if ('\u{2800}'..='\u{28ff}').contains(&character)
-        || UI_CHARACTERS.binary_search(&character).is_ok()
-    {
-        bundle::bitmap(character).unwrap_or(0)
-    } else {
-        (font_pixels(glyph_byte(character)) as u128) << 2
-    }
+    bundle::bitmap(character)
+        .unwrap_or_else(|| (font_pixels(glyph_byte(character)) as u128) << 2)
 }
 
 /// Legacy 64-bit Unicode mask (top-left pixel at bit 63). The final two cell
@@ -138,4 +87,24 @@ pub fn measure_text(text: &str) -> (usize, usize) {
 
 pub fn measure_bytes(bytes: &[u8]) -> (usize, usize) {
     (bytes.len() * FWIDTH, FHEIGHT)
+}
+
+#[cfg(all(test, feature = "hex"))]
+mod bitmap_lookup_tests {
+    #[test]
+    fn every_cp850_unicode_identity_uses_its_complete_stored_mask() {
+        for character in crate::CP850_CHARACTERS {
+            assert_eq!(crate::glyph_cell_pixels(character),
+                crate::bundle::bitmap(character).unwrap(), "{character:?}");
+        }
+    }
+
+    #[test]
+    fn unicode_lookup_covers_stored_symbols_and_replaces_unknowns() {
+        for character in ['←', '↑', '↓', '↔', '↕', '▲', '•', '○', '🯹', '⣿', '╭'] {
+            assert_eq!(crate::glyph_cell_pixels(character),
+                crate::bundle::bitmap(character).unwrap());
+        }
+        assert_eq!(crate::glyph_cell_pixels('界'), crate::glyph_cell_pixels('?'));
+    }
 }

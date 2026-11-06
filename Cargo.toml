@@ -1,9 +1,9 @@
 [package]
 name = "microfont"
-version = "3.9.9"
+version = "8.5.0"
 edition = "2024"
 license = "MIT"
-description = "MicroFont is a dependency-free no_std 6x11 bitmap and line/quad font."
+description = "Dependency-free no_std 6x11 bitmap masks, vector lines and quads, with SVG output."
 homepage = "https://github.com/t4ce/MicroFont"
 repository = "https://github.com/t4ce/MicroFont"
 readme = "README.md"
@@ -15,12 +15,17 @@ include = [
     "README.md",
     "LICENSE",
     "docs/**/*.png",
+    "docs/**/*.svg",
+    "docs/RELEASE*.md",
     "src/**/*.rs",
     "data/line-v1/**/*.bin",
     "data/line-v1/**/*.md",
     "shaders/**/*.vert",
+    "shaders/**/*.frag",
+    "shaders/**/*.md",
     "examples/**/*.rs",
     "tools/**/*.py",
+    "tools/**/*.rs",
     "tools/**/*.txt",
 ]
 
@@ -39,6 +44,21 @@ required-features = ["stamp"]
 [[example]]
 name = "readme_previews"
 required-features = ["stamp"]
+
+[[example]]
+name = "atlas_previews"
+required-features = ["hex", "raster"]
+
+[[example]]
+name = "svg_text"
+required-features = ["raster"]
+
+[[example]]
+name = "geometry_sink"
+required-features = ["raster"]
+
+[package.metadata.docs.rs]
+features = ["hex", "raster", "stamp"]
 
 [profile.release]
 opt-level = 3

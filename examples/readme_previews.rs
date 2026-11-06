@@ -13,7 +13,7 @@ fn text(p: &mut [u32], x: i32, y: i32, s: &str, c: u32) {
 fn main() -> std::io::Result<()> {
     fs::create_dir_all("target")?;
     let mut p = vec![0x101820; W * H];
-    text(&mut p, 12, 12, "MicroFont 3.9.9", 0xF7E27E);
+    text(&mut p, 12, 12, concat!("MicroFont ", env!("CARGO_PKG_VERSION")), 0xF7E27E);
     text(
         &mut p,
         12,

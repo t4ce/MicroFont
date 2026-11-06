@@ -1,49 +1,178 @@
-# MicroFont
+# MicroFont 8.5.0
 
-MicroFont is a dependency-free `no_std` 6×11 font with bitmap masks and line/quad
-geometry. Glyph data lives in binary files, rather than Rust bitmap tables.
+Thank you to everyone building with MicroFont. Seeing it become part of your
+projects is a big motivation to keep improving it.
 
-## Features and the single-file bundle
+One font, two representations: **6×11 bitmap masks** or **scalable line strips
+and filled quads**. `no_std`, no runtime dependencies, no font engine, and no
+allocation required by the readers or SVG writer. Choose either representation
+or include both in one packed bundle.
 
-| Features | Included data |
-| --- | --- |
-| `hex` | Full 66-bit cell masks only |
-| `raster` | Line strips, quads and shared component recipes only |
-| `hex,raster` | Both representations |
-| `stamp` (default) | Enables `hex` and buffer-stamping helpers |
+**Hex bitmap use and the SVG stamper require no shaders.** GLSL shaders ship
+with the crate as optional examples for people writing a **native GPU font
+renderer** for the line and quad geometry. Software renderers can consume that
+geometry directly too. See the [shader files and integration guide](shaders/README.md).
 
-At least one of `hex` or `raster` is required. Neither mode pulls in external
-Rust dependencies. Han is not included.
+## Hex: exact pixels
+
+![MicroFont 8.5.0 Hex atlas: CP850, box drawing, blocks and braille](docs/atlas-hex.png)
+
+[Open the full Hex SVG atlas](docs/atlas-hex.svg).
+Every pixel above comes from the stored 66-bit masks.
+
+## Raster: line and quad geometry
+
+![MicroFont 8.5.0 Raster atlas: scalable lines and filled quads](docs/atlas-raster.png)
+
+[Open the scalable Raster SVG atlas](docs/atlas-raster.svg).
+This preview is real vector geometry: lines, dots and filled quadrilaterals
+from the same records your renderer receives. It does not use an outline font
+or trace the bitmap masks.
+
+Both atlases show all 256 CP850 display slots, all 128 box-drawing characters,
+all 32 block elements, all 256 braille patterns, and the additional stored
+symbols. CP850 is **nearly complete**: 24 bitmap shapes and 11 raster shapes
+are still unfinished, excluding intentional blank slots 00, 20 and FF.
+Those gaps are marked in the previews. Box drawing, blocks and braille are
+complete in both representations; U+2800 is an intentional blank.
+
+Crates.io displays static README images; its [README renderer](https://github.com/rust-lang/crates.io/blob/main/crates/crates_io_markdown/src/lib.rs)
+removes scripts and event handlers, so a type-to-preview control cannot run
+inside this README. The
+[Lattice glyph studio](docs/lattice-glyph-studio.html) is a standalone editor
+that you can download and open locally.
+
+## Features and embedded data size
+
+Measured from this 8.5.0 source snapshot with the default glyph directory:
+
+| Cargo features | Embedded `microfont.bin` | Included data |
+| --- | ---: | --- |
+| `hex` | **28,584 bytes** (27.91 KiB) | 66-bit bitmap masks |
+| `raster` | **66,374 bytes** (64.82 KiB) | Line strips, quads, aliases and component recipes |
+| `hex,raster` | **79,094 bytes** (77.24 KiB) | Both, with a shared index |
+| `stamp` (default) | **28,584 bytes** (27.91 KiB) | Hex data plus caller-buffer stamping APIs |
+
+These are exact **font payload sizes**, including the bundle index. They are
+not the size of your executable or the Rust APIs: linked code depends on your
+target, compiler, optimization and which functions you call. SVG/shader source
+files are not embedded unless your application explicitly includes them.
+Reproduce the measurements with `python3 tools/measure-bundles.py`.
+
+Two illustrative **linked-code averages**, measured separately from font data:
+
+| Workload | Average added code | Speed-optimized build | Size-optimized build |
+| --- | ---: | ---: | ---: |
+| Hex text stamping (`stamp`) | **2,040 bytes** (1.99 KiB) | 2,366 bytes | 1,714 bytes |
+| Raster + SVG text output | **25,040 bytes** (24.45 KiB) | 29,258 bytes | 20,822 bytes |
+
+Each average is the arithmetic mean of two release builds: `opt-level=3` and
+`opt-level="z"`, using Rust 1.95.0 on `x86_64-unknown-linux-gnu`, fat LTO, one
+codegen unit and aborting panics. The probes are `no_std`, use no allocator,
+and keep inputs/output observable. Values are ELF `.text` bytes above the same
+empty baseline; they exclude the font bundle, other read-only data, and ELF
+headers. They are examples, not averages across all applications or targets.
+The SVG figure includes Rust's number-formatting code; reading raw Raster
+geometry does not require linking the SVG writer.
+
+Reproduce both averages with
+`python3 tools/measure-code.py --toolchain 1.95.0` (requires Cargo and GNU `size`).
 
 ```toml
-microfont = { version = "3.9.9", default-features = false, features = ["raster"] }
+# Original bitmap/stamping behavior (default features):
+microfont = "8.5.0"
+
+# Or select one representation explicitly:
+# microfont = { version = "8.5.0", default-features = false, features = ["hex"] }
+# microfont = { version = "8.5.0", default-features = false, features = ["raster"] }
+# microfont = { version = "8.5.0", default-features = false, features = ["hex", "raster"] }
 ```
+
+`stamp` enables `hex`; the SVG writer is available with `raster`. At least one
+of `hex` or `raster` is required. Han and general Unicode text shaping are not
+included.
+
+## Put the geometry into your renderer
+
+With `raster`, `raster_line::glyph_strips(ch)` borrows the line geometry and
+`raster_quad::glyph_quads(ch)` borrows filled quads. Iterate each strip with
+`iter_points()` to apply shared alias transforms correctly. Integer line
+points identify pixel centers; quad vertices describe cell boundaries. End
+and Junction tags remain available for your cap/join policy. Missing raster
+records return `None`.
+
+The dependency-free [`geometry_sink`](examples/geometry_sink.rs) example shows
+how to consume these values as renderer primitives. The package includes
+[portable GLSL vertex/fragment shaders and their vertex contract](shaders/README.md),
+as well as the original TRUEOS mask shaders. Your application supplies the
+software rasterizer or graphics API setup, vertex upload and blending; MicroFont
+supplies the geometry. Shader files are shipped as source, not compiled for a
+particular GPU.
+
+These shaders are optional native GPU renderer examples, not a requirement of
+the `raster` feature. Software rendering and SVG output do not use them.
+
+```sh
+cargo run --example geometry_sink --no-default-features --features raster
+```
+
+## SVG from `no_std`
+
+The `svg` module writes the same raster geometry to a caller-provided
+`core::fmt::Write` sink. The library needs neither `std` nor an allocator.
+The host [`svg_text`](examples/svg_text.rs) example wraps those fragments in a
+complete SVG document; the output can scale, recolor or rotate through ordinary
+SVG transforms.
+
+The SVG stamper requires no GPU or shaders. It writes SVG geometry; your chosen
+SVG viewer or renderer handles displaying the result.
+
+```sh
+cargo run --example svg_text --no-default-features --features raster > sample.svg
+```
+
+```rust,no_run
+# #[cfg(feature = "raster")]
+# fn example() -> Result<(), microfont::svg::Error> {
+let mut output = String::new(); // Or a fixed buffer / streaming fmt::Write sink.
+microfont::svg::write_text(&mut output, "MicroFont 8.5.0", 0.8)?;
+# Ok(())
+# }
+```
+
+`write_glyph(&mut sink, character, stroke_width)` emits one source cell;
+`write_text(&mut sink, text, stroke_width)` advances six units per cell.
+Wrap fragments in an SVG element with its namespace and a suitable `viewBox`.
+Paint uses `currentColor`; line caps and joins are round. Ordinary spaces are
+blank advances, while control characters expand to their named labels. Missing
+glyphs return `svg::Error::MissingGlyph` before writing the row.
+
+This exports the stored font geometry; it does not provide a TTF parser, an SVG
+rasterizer, automatic layout, shaping or a display driver.
+
+## Bundle installation
 
 The standard-library-only host build script packs the selected fields into one
-uncompressed `microfont.bin`. Portable targets embed only that file. Runtime
-lookup needs no allocator, filesystem, tar reader, compression library or
-initialization call. The build script uses no external tools for portable builds.
+uncompressed `microfont.bin`. Portable targets embed only that file and need no
+runtime initialization, filesystem, tar reader or compression library. The host
+build has no external packaging dependencies.
 
-For `cfg(target_os = "trueos")`, the build script instead embeds only one
-`microfont.tar.lz4` archive. The tar has exactly one member, `microfont.bin`;
-LZ4 packaging uses the host `lz4` executable. TRUEOS decompresses it after heap
-setup, validates it with `install_bundle`, and retains the resulting bytes for
-the kernel lifetime before the first font output. The uncompressed file is a
-build intermediate, not a second embedded font. A second installation is rejected.
+For `cfg(target_os = "trueos")`, the build script embeds one
+`microfont.tar.lz4` archive instead and requires the host `lz4` command. TRUEOS
+decompresses and installs the validated bundle before font output. Hex-only,
+raster-only and combined selections all use the same format; compressed sizes
+depend on the selected representation. `bundle::UNCOMPRESSED_BUNDLE_BYTES`
+reports the selected uncompressed payload size.
 
-From the TRUEOS repository, produce a distributable archive with:
-
-```sh
-make microfont-bundle MICROFONT_FEATURES=hex,raster
-# bld/microfont/microfont.tar.lz4
-```
-
-Use `MICROFONT_FEATURES=hex` or `raster` to produce either representation alone.
-For a portable single file without compression:
+## Reproduce the previews
 
 ```sh
-python3 tools/microfont-pack/build.py --features raster --output /tmp/microfont.bin
+cargo run --example atlas_previews --no-default-features --features hex,raster
 ```
+
+The atlas generator uses this crate's public readers. SVG artifacts retain real
+vector geometry; PNGs are static README fallbacks. See the example for output
+paths and PNG conversion instructions.
 
 ## Editable source records
 
