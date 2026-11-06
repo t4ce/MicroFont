@@ -3,6 +3,12 @@
 Thank you to everyone building with MicroFont. Seeing it become part of your
 projects is a big motivation to keep improving it.
 
+**The road ahead:** We'll finish the few missing glyphs soon, pixel perfect.
+The near-term goal is complete CP850 coverage, including the characters it
+borrows from other Unicode blocks. We're almost there. For now, expansions
+stay within **Misc + Extra symbols** until we identify a nice subset to focus
+on. In the meantime, just relax :)
+
 One font, two representations: **6×11 bitmap masks** or **scalable line strips
 and filled quads**. `no_std`, no runtime dependencies, no font engine, and no
 allocation required by the readers or SVG writer. Choose either representation
